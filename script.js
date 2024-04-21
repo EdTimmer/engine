@@ -6,6 +6,7 @@ import GUI from 'lil-gui'
 
 // GUI
 const gui = new GUI()
+gui.close()
 
 const canvas = document.querySelector('canvas.webgl')
 
@@ -225,7 +226,7 @@ window.addEventListener('resize', () =>
 })
 
 // Camera
-const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
+const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 1000)
 camera.position.x = 0
 camera.position.y = 0
 camera.position.z = 30
@@ -256,9 +257,11 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
 let startUpTime = null;
 let startLeftTime = null;
 let startRightTime = null;
+let startDownTime = null;
 let upAnimationInProgress = false;
 let leftAnimationInProgress = false;
 let rightAnimationInProgress = false;
+let downAnimationInProgress = false;
 
 const duration = 1000; // duration of the full animation in milliseconds
 const initialZRotation = shellGroup.rotation.z;
@@ -278,6 +281,9 @@ function animateRocking(time) {
     // updateLeftRotation(time)
     if (startRightTime !== null) {
       updateRightRotation(time);
+    }
+    if (startDownTime !== null) {
+      updateDownRotation(time);
     }
     // updateRightRotation(time)
     renderer.render(scene, camera);
@@ -307,6 +313,28 @@ function updateUpRotation(time) {
     }
 }
 
+function updateDownRotation(time) {
+  // if (!startUpTime) return;
+  const elapsedTime = time - startDownTime;
+  const progress = elapsedTime / duration;
+
+  if (progress <= 0.5) {
+      // First half: rotate to 0.5 radians
+      shellGroup.rotation.z = initialZRotation + 2 * rotationStep * progress;
+  } else if (progress <= 1) {
+      // Second half: rotate back to initial position
+      shellGroup.rotation.z = initialZRotation + 2 * rotationStep * (1 - progress);
+  // } else if (progress <= 2) {
+  //   shellGroup.position.x = -1;
+    
+  } else {
+      // End of animation
+      shellGroup.rotation.z = initialZRotation;
+      startDownTime = null; // Reset startTime to stop the animation
+      // upAnimationInProgress = false; 
+  }
+}
+
 function updateLeftRotation(time) {
   console.log('in left rotation function');
   // if (!startLeftTime) return;
@@ -319,6 +347,7 @@ function updateLeftRotation(time) {
   } else if (progress <= 1) {
       // Second half: rotate back to initial position
       shellGroup.rotation.x = initialXRotation + 2 * rotationStep * (1 - progress);
+      engineGroup.rotation.y += 0.01;
   // } else if (progress <= 2) {
   //   shellGroup.position.x = -1;
     
@@ -340,6 +369,7 @@ function updateRightRotation(time) {
   } else if (progress <= 1) {
       // Second half: rotate back to initial position
       shellGroup.rotation.x = initialXRotation - 2 * rotationStep * (1 - progress);
+      engineGroup.rotation.y += -0.01;
   // } else if (progress <= 2) {
   //   shellGroup.position.x = -1;
     
@@ -352,20 +382,23 @@ function updateRightRotation(time) {
 
 // Listen for the up arrow key
 window.addEventListener('keydown', function(event) {
-    if (event.key === 'ArrowUp' && !upAnimationInProgress) {
-        // Start the animation
-        startUpTime = performance.now();
-        upAnimationInProgress = true; // Indicate that animation is in progress
+  if (event.key === 'ArrowUp' && !upAnimationInProgress) {
+      // Start the animation
+      startUpTime = performance.now();
+      upAnimationInProgress = true; // Indicate that animation is in progress
 
-    } else if (event.key === 'ArrowLeft' && !leftAnimationInProgress) {
-        // engineGroup.position.x -= 1;
-        console.log('event.key :>> ', event.key);
-        startLeftTime = performance.now();
-        leftAnimationInProgress = true;
-    } else if (event.key === 'ArrowRight' && !rightAnimationInProgress) {
+  } else if (event.key === 'ArrowLeft' && !leftAnimationInProgress) {
       // engineGroup.position.x -= 1;
-      startRightTime = performance.now();
-      rightAnimationInProgress = true;
+      console.log('event.key :>> ', event.key);
+      startLeftTime = performance.now();
+      leftAnimationInProgress = true;
+  } else if (event.key === 'ArrowRight' && !rightAnimationInProgress) {
+    // engineGroup.position.x -= 1;
+    startRightTime = performance.now();
+    rightAnimationInProgress = true;
+  } else if (event.key === 'ArrowDown' && !downAnimationInProgress) {
+    startDownTime = performance.now();
+    downAnimationInProgress = true;
   }
 });
 
@@ -377,6 +410,8 @@ window.addEventListener('keyup', function(event) {
     leftAnimationInProgress = false;
   } else if (event.key === 'ArrowRight') {
     rightAnimationInProgress = false;
+  } else if (event.key === 'ArrowDown') {
+    downAnimationInProgress = false;
   }
 });
 
@@ -402,10 +437,30 @@ function animateForward(time) {
 
   // Handle continuous movement based on key states
   if (keyStates['ArrowUp']) {
-    engineGroup.position.x -= 0.1 * deltaTime;  // Move at 1 unit per second
+
+    const speed = 0.75;
+
+    const forward = new THREE.Vector3(-1, 0, 0); // Faces negative x-direction initially
+    forward.applyEuler(new THREE.Euler(0, engineGroup.rotation.y, 0, 'XYZ'));
+
+    // engineGroup.position.x -= 0.1 * deltaTime;  // Move at 1 unit per second
+    engineGroup.position.add(forward.multiplyScalar(speed));
   }
   if (keyStates['ArrowDown']) {
-    engineGroup.position.x += 0.1 * deltaTime;  // Move at 1 unit per second
+    // engineGroup.position.x += 0.1 * deltaTime;  // Move at 1 unit per second
+    const speed = 0.75;
+
+    const backward = new THREE.Vector3(-1, 0, 0); // Faces negative x-direction initially
+    backward.applyEuler(new THREE.Euler(0, engineGroup.rotation.y, 0, 'XYZ'));
+
+    // engineGroup.position.x -= 0.1 * deltaTime;  // Move at 1 unit per second
+    engineGroup.position.add(backward.multiplyScalar(-speed));
+  }
+  if (keyStates['ArrowLeft']) {
+    engineGroup.rotation.y += 0.01 * deltaTime;  // Move at 1 unit per second
+  }
+  if (keyStates['ArrowRight']) {
+    engineGroup.rotation.y -= 0.01 * deltaTime;  // Move at 1 unit per second
   }
 
   renderer.render(scene, camera);
@@ -436,6 +491,8 @@ const tick = () =>
 
     // Update controls
     controls.update()
+
+    camera.lookAt(engineGroup.position)
 
     // Render
     renderer.render(scene, camera)
