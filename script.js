@@ -11,6 +11,11 @@ const canvas = document.querySelector('canvas.webgl')
 
 const scene = new THREE.Scene()
 
+/**
+ * Axes Helper
+ */
+const axesHelper = new THREE.AxesHelper(2)
+scene.add(axesHelper)
 
 // Objects
 // const materialSphere = new THREE.MeshLambertMaterial({ color: '#B6BBC4', emissive: 'black'})
@@ -138,15 +143,25 @@ gui.add(params, 'arc', 0.1, Math.PI * 2).onChange(value => {
   seal.geometry = new THREE.TorusGeometry(params.radius, params.tube, params.radialSegments, params.tubularSegments, value);
 });
 
-console.log('seal.rotation.order :>> ', seal.rotation.order);
+// console.log('seal.rotation.order :>> ', seal.rotation.order);
 
 // MOLUSK
+const cubeCamera = new THREE.CubeCamera(1, 1000, 256);
+scene.add(cubeCamera);
+// Create the reflective material using the cubeCamera's renderTarget
+const reflectiveMaterial = new THREE.MeshStandardMaterial({
+  envMap: cubeCamera.renderTarget.texture,
+  metalness: 1,  // Adjust for stronger reflectivity
+  roughness: 0   // Adjust based on how sharp you want the reflection
+});
+
 const moluskGeometry = new THREE.TorusGeometry(12, 3, 64, 200);
-const material = new THREE.MeshStandardMaterial();
-material.metalness = 0.8
-material.roughness = 0
-// const material = new THREE.MeshMatcapMaterial();
-// material.matcap = new THREE.TextureLoader().load('static/textures/matcaps/1.png');
+// const moluskMaterial = new THREE.MeshStandardMaterial();
+
+// moluskMaterial.metalness = 0.8
+// moluskMaterial.roughness = 0
+const moluskMaterial = new THREE.MeshMatcapMaterial();
+moluskMaterial.matcap = new THREE.TextureLoader().load('static/textures/matcaps/1.png');
 
 // Access the position attribute
 const positions = moluskGeometry.attributes.position;
@@ -166,7 +181,7 @@ for (let i = 0; i < positions.count; i++) {
 
 moluskGeometry.computeVertexNormals(); // Necessary to ensure lighting is calculated properly after modifying vertices
 
-const molusk = new THREE.Mesh(moluskGeometry, material);
+const molusk = new THREE.Mesh(moluskGeometry, reflectiveMaterial);
 molusk.rotation.x = Math.PI;
 molusk.rotation.z = - Math.PI / 2.5;
 scene.add(molusk);
@@ -189,16 +204,16 @@ const lightAmbient = new THREE.AmbientLight( 0x404040 ); // soft white light
 scene.add( lightAmbient );
 
 const light = new THREE.PointLight(0xffffff, 100, 0);
-light.position.set(-5, 5, 5);
+
 scene.add(light);
 
 // Environment map
 const rgbeLoader = new RGBELoader()
-rgbeLoader.load('./static/textures/environmentMap/table_mountain_1_4k.hdr', (environmentMap) => {
-    environmentMap.mapping = THREE.EquirectangularReflectionMapping
-    scene.background = environmentMap
-    scene.environment = environmentMap
-})
+// rgbeLoader.load('./static/textures/environmentMap/table_mountain_1_4k.hdr', (environmentMap) => {
+//     environmentMap.mapping = THREE.EquirectangularReflectionMapping
+//     scene.background = environmentMap
+//     scene.environment = environmentMap
+// })
 
 
 /**
@@ -226,9 +241,10 @@ window.addEventListener('resize', () =>
 
 // Camera
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.x = 0
-camera.position.y = 0
-camera.position.z = 30
+// camera.position.x = 0
+// camera.position.y = 0
+// camera.position.z = 30
+
 scene.add(camera)
 
 // Controls
@@ -266,8 +282,8 @@ const initialXRotation = shellGroup.rotation.x;
 const rotationStep = 0.5; // total rotation
 
 // Render loop
-function animateRocking(time) {
-    requestAnimationFrame(animateRocking);
+function animateMove(time) {
+    requestAnimationFrame(animateMove);
     // updateUpRotation(time);
     if (startUpTime !== null) {
       updateUpRotation(time);
@@ -280,9 +296,20 @@ function animateRocking(time) {
       updateRightRotation(time);
     }
     // updateRightRotation(time)
+    // updateTerrain();
+    camera.position.set(engineGroup.position.x, engineGroup.position.y + 5, engineGroup.position.z + 30)
+    light.position.set(engineGroup.position.x - 5, engineGroup.position.y + 5, engineGroup.position.z + 5);
+
+    // Move the cube camera to the reflective object's position
+  
+
+  // Update the cube camera
+  // cubeCamera.update(renderer, scene);
+  // cubeCamera.update(renderer, scene);
+
     renderer.render(scene, camera);
 }
-animateRocking();
+animateMove();
 
 // Rotation update function
 function updateUpRotation(time) {
@@ -308,8 +335,7 @@ function updateUpRotation(time) {
 }
 
 function updateLeftRotation(time) {
-  console.log('in left rotation function');
-  // if (!startLeftTime) return;
+// if (!startLeftTime) return;
   const elapsedTime = time - startLeftTime;
   const progress = elapsedTime / duration;
 
@@ -359,7 +385,6 @@ window.addEventListener('keydown', function(event) {
 
     } else if (event.key === 'ArrowLeft' && !leftAnimationInProgress) {
         // engineGroup.position.x -= 1;
-        console.log('event.key :>> ', event.key);
         startLeftTime = performance.now();
         leftAnimationInProgress = true;
     } else if (event.key === 'ArrowRight' && !rightAnimationInProgress) {
@@ -408,9 +433,110 @@ function animateForward(time) {
     engineGroup.position.x += 0.1 * deltaTime;  // Move at 1 unit per second
   }
 
+  // camera.position.x = engineGroup.position.x;
+  // camera.position.y = engineGroup.position.y + 5; // Offset by 5 units above the mesh
+  // camera.position.z = engineGroup.position.z + 30; // Offset by 10 units back
+
   renderer.render(scene, camera);
 }
 requestAnimationFrame(animateForward);
+
+
+// Texture loader
+const loader = new THREE.TextureLoader();
+const diffuseTexture = loader.load('./static/textures/tile/4K-abstract_5-diffuse.jpg');
+const specularTexture = loader.load('./static/textures/tile/4K-abstract_5-specular.jpg');
+const normalTexture = loader.load('./static/textures/tile/4K-abstract_5-normal.jpg');
+const displacementTexture = loader.load('./static/textures/tile/4K-abstract_5-displacement.jpg');
+const aoTexture = loader.load('./static/textures/tile/4K-abstract_5-ao.jpg');
+const textures = [diffuseTexture, specularTexture, normalTexture, displacementTexture, aoTexture];
+textures.forEach(texture => {
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(1, 1);
+});
+
+
+
+// Terrain
+// const terrainGeometry = new THREE.PlaneGeometry(200, 200, 10, 10);
+// const terrainMaterial = new THREE.MeshLambertMaterial({ color: 'blue' });
+// const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
+// terrain.rotation.x = -Math.PI / 2; // Rotate to lie flat
+// terrain.position.y = -20; // Lower the terrain to avoid z-fighting with the spheres
+// scene.add(terrain);
+
+// Terrain tiles storage
+const tiles = {};
+
+// function createTerrainTile() {
+//   const tile = new THREE.Mesh(
+//       new THREE.PlaneGeometry(200, 200, 10, 10),
+//       new THREE.MeshLambertMaterial({ color: 'blue' })
+//   );
+//   tile.rotation.x = -Math.PI / 2;
+//   tile.position.y = -20;
+//   return tile;
+// }
+// Create terrain tile function
+function createTerrainTile(x, z) {
+  const material = new THREE.MeshPhongMaterial({
+      map: diffuseTexture,
+      normalMap: normalTexture,
+      displacementMap: displacementTexture,
+      displacementScale: 0.2,
+      aoMap: aoTexture,
+      specularMap: specularTexture,
+  });
+
+  const tile = new THREE.Mesh(
+      new THREE.PlaneGeometry(200, 200, 50, 50),
+      material
+  );
+  tile.rotation.x = -Math.PI / 2;
+  tile.position.x = x * 200;
+  tile.position.z = z * 200;
+  tile.position.y = -20;
+  return tile;
+}
+
+function updateTerrain() {
+  const camX = Math.floor(camera.position.x / 200);
+  const camZ = Math.floor(camera.position.z / 200);
+
+  for (let x = camX - 1; x <= camX + 1; x++) {
+      for (let z = camZ - 1; z <= camZ + 1; z++) {
+          const key = x + '_' + z;
+          if (!tiles[key]) {
+              const tile = createTerrainTile();
+              tile.position.x = x * 200;
+              tile.position.z = z * 200;
+              scene.add(tile);
+              tiles[key] = tile;
+          }
+      }
+  }
+
+  // Remove distant tiles
+  Object.keys(tiles).forEach(key => {
+      const parts = key.split('_');
+      if (Math.abs(camX - parseInt(parts[0])) > 2 || Math.abs(camZ - parseInt(parts[1])) > 2) {
+          scene.remove(tiles[key]);
+          delete tiles[key];
+      }
+  });
+}
+
+// Call updateTerrain in the animation loop
+// function animate() {
+//   requestAnimationFrame(animate);
+//   updateTerrain();
+//   renderer.render(scene, camera);
+// }
+
+// animate();
+
+
+
 
 /**
  * Animate
@@ -420,6 +546,8 @@ const clock = new THREE.Clock()
 const tick = () =>
 {
     const elapsedTime = clock.getElapsedTime()
+
+    updateTerrain();
 
     // Update objects
     // sphere.rotation.y = elapsedTime * 0.2
@@ -437,6 +565,14 @@ const tick = () =>
     // Update controls
     controls.update()
 
+    // camera.position.x = engineGroup.position.x
+    // camera.position.y = engineGroup.position.y + 5 // Offset by 5 units above the mesh
+    // camera.position.z = engineGroup.position.z + 30 // Offset by 10 units back
+
+    camera.lookAt(engineGroup.position); // Make the camera always look at the mesh
+    cubeCamera.position.copy(engineGroup.position);
+
+  
     // Render
     renderer.render(scene, camera)
 
