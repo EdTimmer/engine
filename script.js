@@ -170,6 +170,7 @@ moluskGeometry.computeVertexNormals(); // Necessary to ensure lighting is calcul
 const molusk = new THREE.Mesh(moluskGeometry, material);
 molusk.rotation.x = Math.PI;
 molusk.rotation.z = - Math.PI / 2.5;
+
 scene.add(molusk);
 
 const coreGroup = new THREE.Group();
@@ -182,6 +183,7 @@ shellGroup.add(seal, molusk);
 
 const engineGroup = new THREE.Group();
 engineGroup.add(coreGroup, shellGroup);
+// engineGroup.rotation.y = Math.PI;
 scene.add(engineGroup);
 
 // LIGHTS
@@ -298,10 +300,10 @@ function updateUpRotation(time) {
 
     if (progress <= 0.5) {
         // First half: rotate to 0.5 radians
-        shellGroup.rotation.z = initialZRotation - 2 * rotationStep * progress;
+        shellGroup.rotation.z = initialZRotation + 2 * rotationStep * progress;
     } else if (progress <= 1) {
         // Second half: rotate back to initial position
-        shellGroup.rotation.z = initialZRotation - 2 * rotationStep * (1 - progress);
+        shellGroup.rotation.z = initialZRotation + 2 * rotationStep * (1 - progress);
     // } else if (progress <= 2) {
     //   shellGroup.position.x = -1;
       
@@ -320,10 +322,10 @@ function updateDownRotation(time) {
 
   if (progress <= 0.5) {
       // First half: rotate to 0.5 radians
-      shellGroup.rotation.z = initialZRotation + 2 * rotationStep * progress;
+      shellGroup.rotation.z = initialZRotation - 2 * rotationStep * progress;
   } else if (progress <= 1) {
       // Second half: rotate back to initial position
-      shellGroup.rotation.z = initialZRotation + 2 * rotationStep * (1 - progress);
+      shellGroup.rotation.z = initialZRotation - 2 * rotationStep * (1 - progress);
   // } else if (progress <= 2) {
   //   shellGroup.position.x = -1;
     
@@ -444,7 +446,7 @@ function animateForward(time) {
     forward.applyEuler(new THREE.Euler(0, engineGroup.rotation.y, 0, 'XYZ'));
 
     // engineGroup.position.x -= 0.1 * deltaTime;  // Move at 1 unit per second
-    engineGroup.position.add(forward.multiplyScalar(speed));
+    engineGroup.position.add(forward.multiplyScalar(-speed));
   }
   if (keyStates['ArrowDown']) {
     // engineGroup.position.x += 0.1 * deltaTime;  // Move at 1 unit per second
@@ -454,13 +456,13 @@ function animateForward(time) {
     backward.applyEuler(new THREE.Euler(0, engineGroup.rotation.y, 0, 'XYZ'));
 
     // engineGroup.position.x -= 0.1 * deltaTime;  // Move at 1 unit per second
-    engineGroup.position.add(backward.multiplyScalar(-speed));
+    engineGroup.position.add(backward.multiplyScalar(speed));
   }
   if (keyStates['ArrowLeft']) {
-    engineGroup.rotation.y += 0.01 * deltaTime;  // Move at 1 unit per second
+    engineGroup.rotation.y += 0.1;  // Move at 1 unit per second
   }
   if (keyStates['ArrowRight']) {
-    engineGroup.rotation.y -= 0.01 * deltaTime;  // Move at 1 unit per second
+    engineGroup.rotation.y -= 0.1;  // Move at 1 unit per second
   }
 
   renderer.render(scene, camera);
