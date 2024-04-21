@@ -1,12 +1,11 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js'
 import GUI from 'lil-gui'
 
 // GUI
-const gui = new GUI()
-gui.close()
+// const gui = new GUI()
+// gui.close()
 
 const canvas = document.querySelector('canvas.webgl')
 
@@ -14,44 +13,24 @@ const scene = new THREE.Scene()
 
 
 // Objects
-// const materialSphere = new THREE.MeshLambertMaterial({ color: '#B6BBC4', emissive: 'black'})
 const materialSphere = new THREE.MeshPhysicalMaterial({ color: '#ff4d00', emissive: 'black', roughness: 0, metalness: 0 })  // { color: '#B6BBC4', emissive: 'black', roughness: 0.5, metalness: 0.5}
 materialSphere.transmission = 0
 materialSphere.ior = 1.592
 materialSphere.thickness = 0.2379
-gui.add(materialSphere, 'transmission').min(0).max(1).step(0.0001)
-gui.add(materialSphere, 'ior').min(1).max(10).step(0.0001)
-gui.add(materialSphere, 'thickness').min(0).max(1).step(0.0001)
-gui.add(materialSphere, 'roughness').min(0).max(1).step(0.0001)
-gui.add(materialSphere, 'metalness').min(0).max(1).step(0.0001)
-gui.addColor(materialSphere, 'color').onChange(() => materialSphere.needsUpdate = true)
 
 const materialSphereTwo = new THREE.MeshPhysicalMaterial({ color: '#fffff5', emissive: 'black', roughness: 0.1, metalness: 0.5 })  // { color: '#B6BBC4', emissive: 'black', roughness: 0.5, metalness: 0.5}
 materialSphereTwo.transmission = 1
 materialSphereTwo.ior = 1.5
 materialSphereTwo.thickness = 0.5
-gui.add(materialSphereTwo, 'transmission').min(0).max(1).step(0.0001)
-gui.add(materialSphereTwo, 'ior').min(1).max(10).step(0.0001)
-gui.add(materialSphereTwo, 'thickness').min(0).max(1).step(0.0001)
-gui.add(materialSphereTwo, 'roughness').min(0).max(1).step(0.0001)
-gui.add(materialSphereTwo, 'metalness').min(0).max(1).step(0.0001)
-gui.addColor(materialSphereTwo, 'color').onChange(() => materialSphereTwo.needsUpdate = true)
 
-
-// const materialOne = new THREE.MeshMatcapMaterial()
-// materialOne.matcap = new THREE.TextureLoader().load('static/textures/matcaps/1.png')
 const materialOne = new THREE.MeshStandardMaterial();
 materialOne.metalness = 1
 materialOne.roughness = 0
 
-// const materialTwo = new THREE.MeshMatcapMaterial()
-// materialTwo.matcap = new THREE.TextureLoader().load('static/textures/matcaps/1.png')
 const materialTwo = new THREE.MeshStandardMaterial();
 materialTwo.metalness = 1
 materialTwo.roughness = 0
 
-// const materialThree = new THREE.MeshMatcapMaterial()
-// materialThree.matcap = new THREE.TextureLoader().load('static/textures/matcaps/1.png')
 const materialThree = new THREE.MeshStandardMaterial();
 materialThree.metalness = 1
 materialThree.roughness = 0
@@ -62,8 +41,6 @@ const sphereTwo = new THREE.Mesh(new THREE.SphereGeometry(6, 32, 32), materialSp
 
 // Toruses
 const torusOne = new THREE.Mesh(new THREE.TorusGeometry(6.2, 0.07, 34, 82), materialOne)
-// torusOne.scale.y = 1
-// torusOne.scale.x = 0.8
 const torusTwo = new THREE.Mesh(new THREE.TorusGeometry(6.4, 0.07, 34, 82), materialTwo)
 const torusThree = new THREE.Mesh(new THREE.TorusGeometry(6.6, 0.07, 34, 82), materialThree)
 
@@ -71,20 +48,9 @@ scene.add(sphere, sphereTwo)
 scene.add(torusOne, torusTwo, torusThree)
 
 // Seal
-// const materialSeal = new THREE.MeshPhysicalMaterial({ color: '#060628', emissive: 'black', roughness: 0, metalness: 0 })
 const materialSeal = new THREE.MeshStandardMaterial();
 materialSeal.metalness = 0.8
 materialSeal.roughness = 0
-
-// materialSeal.transmission = 0
-// materialSeal.ior = 1.592
-// materialSeal.thickness = 0.2379
-// gui.add(materialSeal, 'transmission').min(0).max(1).step(0.0001)
-// gui.add(materialSeal, 'ior').min(1).max(10).step(0.0001)
-// gui.add(materialSeal, 'thickness').min(0).max(1).step(0.0001)
-// gui.add(materialSeal, 'roughness').min(0).max(1).step(0.0001)
-// gui.add(materialSeal, 'metalness').min(0).max(1).step(0.0001)
-// gui.addColor(materialSeal, 'color').onChange(() => materialSeal.needsUpdate = true)
 
 
 const params = {
@@ -95,59 +61,18 @@ const params = {
   arc: Math.PI * 2
 };
 
-
 const seal = new THREE.Mesh(new THREE.TorusGeometry(params.radius, params.tube, params.radialSegments, params.tubularSegments), materialSeal)
 seal.position.x = 3.12
 seal.position.y = 11.1
 seal.rotation.x = 1.5
 seal.rotation.y = 1.42
 seal.scale.x = 1.2
-// seal.rotateY(1.5)
-
-
-scene.add(seal)
-
-gui.add(seal.position, 'x', -10, 10).name('Position X');
-gui.add(seal.position, 'y', -10, 20).name('Position Y');
-// gui.add(seal.rotation, 'z', -10, 10).name('Rotation Z');
-
-gui.add(seal.rotation, 'x', -Math.PI, Math.PI).name('Rotation X');
-gui.add(seal.rotation, 'y', -Math.PI, Math.PI).name('Rotation Y');
-gui.add(seal.rotation, 'z', -Math.PI, Math.PI).name('Rotation Z');
-
-// Torus Geometry Parameters for GUI
-
-// Add GUI controls
-gui.add(params, 'radius', 0.1, 4).onChange(value => {
-  seal.geometry.dispose();
-  seal.geometry = new THREE.TorusGeometry(value, params.tube, params.radialSegments, params.tubularSegments, params.arc);
-});
-gui.add(params, 'tube', 0.1, 3).onChange(value => {
-  seal.geometry.dispose();
-  seal.geometry = new THREE.TorusGeometry(params.radius, value, params.radialSegments, params.tubularSegments, params.arc);
-});
-gui.add(params, 'radialSegments', 2, 32).step(1).onChange(value => {
-  seal.geometry.dispose();
-  seal.geometry = new THREE.TorusGeometry(params.radius, params.tube, value, params.tubularSegments, params.arc);
-});
-gui.add(params, 'tubularSegments', 3, 200).step(1).onChange(value => {
-  seal.geometry.dispose();
-  seal.geometry = new THREE.TorusGeometry(params.radius, params.tube, params.radialSegments, value, params.arc);
-});
-gui.add(params, 'arc', 0.1, Math.PI * 2).onChange(value => {
-  seal.geometry.dispose();
-  seal.geometry = new THREE.TorusGeometry(params.radius, params.tube, params.radialSegments, params.tubularSegments, value);
-});
-
-console.log('seal.rotation.order :>> ', seal.rotation.order);
 
 // MOLUSK
 const moluskGeometry = new THREE.TorusGeometry(12, 3, 64, 200);
-const material = new THREE.MeshStandardMaterial();
-material.metalness = 0.8
-material.roughness = 0
-// const material = new THREE.MeshMatcapMaterial();
-// material.matcap = new THREE.TextureLoader().load('static/textures/matcaps/1.png');
+const moluskMaterial = new THREE.MeshStandardMaterial();
+moluskMaterial.metalness = 0.8
+moluskMaterial.roughness = 0
 
 // Access the position attribute
 const positions = moluskGeometry.attributes.position;
@@ -167,23 +92,74 @@ for (let i = 0; i < positions.count; i++) {
 
 moluskGeometry.computeVertexNormals(); // Necessary to ensure lighting is calculated properly after modifying vertices
 
-const molusk = new THREE.Mesh(moluskGeometry, material);
+const molusk = new THREE.Mesh(moluskGeometry, moluskMaterial);
 molusk.rotation.x = Math.PI;
 molusk.rotation.z = - Math.PI / 2.5;
 
 scene.add(molusk);
 
+// Head Shell
+
+const points = [];
+for ( let i = 0; i < 20; i ++ ) {
+	points.push( new THREE.Vector2( Math.sin( i * 0.2 ) * 8 + 10, ( i - 5 ) * 2 ) );
+}
+const headShellGeometry = new THREE.LatheGeometry( points, 40 );
+const headShellMaterial = new THREE.MeshStandardMaterial( { side: THREE.DoubleSide } );
+headShellMaterial.metalness = 0.8
+headShellMaterial.roughness = 0
+const headShell = new THREE.Mesh( headShellGeometry, headShellMaterial );
+headShell.scale.set(0.15, 0.15, 0.15);
+
+// Head Sphere
+const materialHeadSphere = new THREE.MeshPhysicalMaterial({ color: '#006eff', emissive: 'black', roughness: 0, metalness: 0 })  // { color: '#B6BBC4', emissive: 'black', roughness: 0.5, metalness: 0.5}
+materialSphere.transmission = 0
+materialSphere.ior = 1.592
+materialSphere.thickness = 0.2379
+// gui.add(materialHeadSphere, 'transmission').min(0).max(1).step(0.0001)
+// gui.add(materialHeadSphere, 'ior').min(1).max(10).step(0.0001)
+// gui.add(materialHeadSphere, 'thickness').min(0).max(1).step(0.0001)
+// gui.add(materialHeadSphere, 'roughness').min(0).max(1).step(0.0001)
+// gui.add(materialHeadSphere, 'metalness').min(0).max(1).step(0.0001)
+// gui.addColor(materialHeadSphere, 'color').onChange(() => materialHeadSphere.needsUpdate = true)
+
+const headSphere = new THREE.Mesh(new THREE.IcosahedronGeometry(1.7, 0), materialHeadSphere)
+
+// Position controls
+// const headSpherePositionFolder = gui.addFolder('Head Sphere Position');
+// headSpherePositionFolder.add(headSphere.position, 'x', -20, 20).name('X-axis');
+// headSpherePositionFolder.add(headSphere.position, 'y', -20, 20).name('Y-axis');
+
+// GROUPS
+
 const coreGroup = new THREE.Group();
 coreGroup.add(sphere, sphereTwo, torusOne, torusTwo, torusThree);
 coreGroup.position.x = 2;
-scene.add(coreGroup);
+
+const headGroup = new THREE.Group();
+headGroup.add(headShell, headSphere);
+headGroup.position.x = -5.64;
+headGroup.position.y = -14.0;
+headGroup.rotation.y = 0.11;
+headGroup.rotation.z = -1.8;
+
+// Position controls
+// const positionFolder = gui.addFolder('Position Head');
+// positionFolder.add(headGroup.position, 'x', -20, 20).step(0.0001).name('X-axis');
+// positionFolder.add(headGroup.position, 'y', -20, 20).step(0.0001).name('Y-axis');
+// positionFolder.add(headGroup.position, 'z', -20, 20).name('Z-axis');
+// positionFolder.open();
+
+// gui.add(headGroup.rotation, 'x', -Math.PI, Math.PI).name('Rotation X');
+// gui.add(headGroup.rotation, 'y', -Math.PI, Math.PI).name('Rotation Y');
+// gui.add(headGroup.rotation, 'z', -Math.PI, Math.PI).name('Rotation Z');
 
 const shellGroup = new THREE.Group();
-shellGroup.add(seal, molusk);
+shellGroup.add(seal, molusk, headGroup);
 
 const engineGroup = new THREE.Group();
 engineGroup.add(coreGroup, shellGroup);
-// engineGroup.rotation.y = Math.PI;
+
 scene.add(engineGroup);
 
 // LIGHTS
@@ -202,7 +178,6 @@ rgbeLoader.load('./static/textures/environmentMap/table_mountain_1_4k.hdr', (env
     scene.background = environmentMap
     scene.environment = environmentMap
 })
-
 
 /**
  * Sizes
@@ -294,52 +269,40 @@ animateRocking();
 
 // Rotation update function
 function updateUpRotation(time) {
-    // if (!startUpTime) return;
     const elapsedTime = time - startUpTime;
     const progress = elapsedTime / duration;
 
     if (progress <= 0.5) {
-        // First half: rotate to 0.5 radians
+        // First half: rotate
         shellGroup.rotation.z = initialZRotation + 2 * rotationStep * progress;
     } else if (progress <= 1) {
         // Second half: rotate back to initial position
         shellGroup.rotation.z = initialZRotation + 2 * rotationStep * (1 - progress);
-    // } else if (progress <= 2) {
-    //   shellGroup.position.x = -1;
-      
     } else {
         // End of animation
         shellGroup.rotation.z = initialZRotation;
-        startUpTime = null; // Reset startTime to stop the animation
-        // upAnimationInProgress = false; 
+        startUpTime = null; // Reset startTime to stop the animation 
     }
 }
 
 function updateDownRotation(time) {
-  // if (!startUpTime) return;
   const elapsedTime = time - startDownTime;
   const progress = elapsedTime / duration;
 
   if (progress <= 0.5) {
-      // First half: rotate to 0.5 radians
+      // First half: rotate
       shellGroup.rotation.z = initialZRotation - 2 * rotationStep * progress;
   } else if (progress <= 1) {
       // Second half: rotate back to initial position
       shellGroup.rotation.z = initialZRotation - 2 * rotationStep * (1 - progress);
-  // } else if (progress <= 2) {
-  //   shellGroup.position.x = -1;
-    
   } else {
       // End of animation
       shellGroup.rotation.z = initialZRotation;
       startDownTime = null; // Reset startTime to stop the animation
-      // upAnimationInProgress = false; 
   }
 }
 
 function updateLeftRotation(time) {
-  console.log('in left rotation function');
-  // if (!startLeftTime) return;
   const elapsedTime = time - startLeftTime;
   const progress = elapsedTime / duration;
 
@@ -349,10 +312,7 @@ function updateLeftRotation(time) {
   } else if (progress <= 1) {
       // Second half: rotate back to initial position
       shellGroup.rotation.x = initialXRotation + 2 * rotationStep * (1 - progress);
-      engineGroup.rotation.y += 0.01;
-  // } else if (progress <= 2) {
-  //   shellGroup.position.x = -1;
-    
+      engineGroup.rotation.y += 0.01;    
   } else {
       // End of animation
       shellGroup.rotation.x = initialXRotation;
@@ -361,20 +321,16 @@ function updateLeftRotation(time) {
 }
 
 function updateRightRotation(time) {
-  // if (!startRightTime) return;
   const elapsedTime = time - startRightTime;
   const progress = elapsedTime / duration;
 
   if (progress <= 0.5) {
-      // First half: rotate to 0.5 radians
+      // First half: rotate
       shellGroup.rotation.x = initialXRotation - 2 * rotationStep * progress;
   } else if (progress <= 1) {
       // Second half: rotate back to initial position
       shellGroup.rotation.x = initialXRotation - 2 * rotationStep * (1 - progress);
-      engineGroup.rotation.y += -0.01;
-  // } else if (progress <= 2) {
-  //   shellGroup.position.x = -1;
-    
+      engineGroup.rotation.y += -0.01;  
   } else {
       // End of animation
       shellGroup.rotation.x = initialXRotation;
@@ -385,17 +341,13 @@ function updateRightRotation(time) {
 // Listen for the up arrow key
 window.addEventListener('keydown', function(event) {
   if (event.key === 'ArrowUp' && !upAnimationInProgress) {
-      // Start the animation
-      startUpTime = performance.now();
-      upAnimationInProgress = true; // Indicate that animation is in progress
-
+    // Start the animation
+    startUpTime = performance.now();
+    upAnimationInProgress = true; // Indicate that animation is in progress
   } else if (event.key === 'ArrowLeft' && !leftAnimationInProgress) {
-      // engineGroup.position.x -= 1;
-      console.log('event.key :>> ', event.key);
-      startLeftTime = performance.now();
-      leftAnimationInProgress = true;
+    startLeftTime = performance.now();
+    leftAnimationInProgress = true;
   } else if (event.key === 'ArrowRight' && !rightAnimationInProgress) {
-    // engineGroup.position.x -= 1;
     startRightTime = performance.now();
     rightAnimationInProgress = true;
   } else if (event.key === 'ArrowDown' && !downAnimationInProgress) {
@@ -440,17 +392,15 @@ function animateForward(time) {
   // Handle continuous movement based on key states
   if (keyStates['ArrowUp']) {
 
-    const speed = 0.75;
+    const speed = 1;
 
     const forward = new THREE.Vector3(-1, 0, 0); // Faces negative x-direction initially
     forward.applyEuler(new THREE.Euler(0, engineGroup.rotation.y, 0, 'XYZ'));
 
-    // engineGroup.position.x -= 0.1 * deltaTime;  // Move at 1 unit per second
     engineGroup.position.add(forward.multiplyScalar(-speed));
   }
   if (keyStates['ArrowDown']) {
-    // engineGroup.position.x += 0.1 * deltaTime;  // Move at 1 unit per second
-    const speed = 0.75;
+    const speed = 1;
 
     const backward = new THREE.Vector3(-1, 0, 0); // Faces negative x-direction initially
     backward.applyEuler(new THREE.Euler(0, engineGroup.rotation.y, 0, 'XYZ'));
@@ -474,34 +424,30 @@ requestAnimationFrame(animateForward);
  */
 const clock = new THREE.Clock()
 
-const tick = () =>
-{
-    const elapsedTime = clock.getElapsedTime()
+const tick = () => {
+  const elapsedTime = clock.getElapsedTime()
 
-    // Update objects
-    // sphere.rotation.y = elapsedTime * 0.2
-    torusOne.rotation.y = elapsedTime * 2
-    torusTwo.rotation.y = elapsedTime * 0.1
-    torusThree.rotation.y = elapsedTime * 2
-    // molusk.rotation.y = elapsedTime * 0.5
+  // Update objects
+  torusOne.rotation.y = elapsedTime * 2
+  torusTwo.rotation.y = elapsedTime * 0.1
+  torusThree.rotation.y = elapsedTime * 2
+  headSphere.rotation.y = elapsedTime * 1
 
-    // sphere.rotation.x = elapsedTime * (-0.2)
-    torusOne.rotation.x = elapsedTime * (-0.1)
-    torusTwo.rotation.x = elapsedTime * (-2)
-    torusThree.rotation.x = elapsedTime * (-0.5)
-    // molusk.rotation.x = elapsedTime * 0.5
+  torusOne.rotation.x = elapsedTime * (-0.1)
+  torusTwo.rotation.x = elapsedTime * (-2)
+  torusThree.rotation.x = elapsedTime * (-0.5)
+  headSphere.rotation.x = elapsedTime * (-1)
 
-    // Update controls
-    controls.update()
+  // Update controls
+  controls.update()
 
-    camera.lookAt(engineGroup.position)
+  camera.lookAt(engineGroup.position)
 
-    // Render
-    renderer.render(scene, camera)
+  // Render
+  renderer.render(scene, camera)
 
-    // Call tick again on the next frame
-    window.requestAnimationFrame(tick)
+  // Call tick again on the next frame
+  window.requestAnimationFrame(tick)
 }
 
 tick()
-
