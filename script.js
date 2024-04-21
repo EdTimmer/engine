@@ -308,10 +308,10 @@ function updateLeftRotation(time) {
 
   if (progress <= 0.5) {
       // First half: rotate to 0.5 radians
-      shellGroup.rotation.x = initialXRotation + 2 * rotationStep * progress;
+      shellGroup.rotation.x = initialXRotation - 2 * rotationStep * progress;
   } else if (progress <= 1) {
       // Second half: rotate back to initial position
-      shellGroup.rotation.x = initialXRotation + 2 * rotationStep * (1 - progress);
+      shellGroup.rotation.x = initialXRotation - 2 * rotationStep * (1 - progress);
       engineGroup.rotation.y += 0.01;    
   } else {
       // End of animation
@@ -326,10 +326,10 @@ function updateRightRotation(time) {
 
   if (progress <= 0.5) {
       // First half: rotate
-      shellGroup.rotation.x = initialXRotation - 2 * rotationStep * progress;
+      shellGroup.rotation.x = initialXRotation + 2 * rotationStep * progress;
   } else if (progress <= 1) {
       // Second half: rotate back to initial position
-      shellGroup.rotation.x = initialXRotation - 2 * rotationStep * (1 - progress);
+      shellGroup.rotation.x = initialXRotation + 2 * rotationStep * (1 - progress);
       engineGroup.rotation.y += -0.01;  
   } else {
       // End of animation
