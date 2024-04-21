@@ -173,7 +173,7 @@ scene.add(light);
 
 // Environment map
 const rgbeLoader = new RGBELoader()
-rgbeLoader.load('/static/textures/environmentMap/cape_hill_2k.hdr', (environmentMap) => {
+rgbeLoader.load('/cape_hill_2k.hdr', (environmentMap) => {
     environmentMap.mapping = THREE.EquirectangularReflectionMapping
     scene.background = environmentMap
     scene.environment = environmentMap
