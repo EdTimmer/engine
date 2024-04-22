@@ -140,7 +140,7 @@ const headGroup = new THREE.Group();
 headGroup.add(headShell, headSphere);
 headGroup.position.x = -5.64;
 headGroup.position.y = -14.0;
-headGroup.rotation.y = 0.11;
+headGroup.rotation.y = 0;
 headGroup.rotation.z = -1.8;
 
 // Position controls
