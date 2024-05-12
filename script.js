@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import * as CANNON from 'cannon'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js'
 import GUI from 'lil-gui'
@@ -130,6 +131,18 @@ const headSphere = new THREE.Mesh(new THREE.IcosahedronGeometry(1.7, 0), materia
 // headSpherePositionFolder.add(headSphere.position, 'x', -20, 20).name('X-axis');
 // headSpherePositionFolder.add(headSphere.position, 'y', -20, 20).name('Y-axis');
 
+// Target
+
+const targetMaterial = new THREE.MeshPhysicalMaterial({ color: 'blue', emissive: 'black', roughness: 0, metalness: 0 })  // { color: '#B6BBC4', emissive: 'black', roughness: 0.5, metalness: 0.5}
+targetMaterial.transmission = 0
+targetMaterial.ior = 1.592
+targetMaterial.thickness = 0.2379
+
+const target = new THREE.Mesh(new THREE.SphereGeometry(4, 32, 32), targetMaterial)
+target.position.set(30, 0, 0)
+target.scale.set(0.5, 0.5, 0.5)
+scene.add(target)
+
 // GROUPS
 
 const coreGroup = new THREE.Group();
@@ -161,6 +174,147 @@ const engineGroup = new THREE.Group();
 engineGroup.add(coreGroup, shellGroup);
 
 scene.add(engineGroup);
+
+/**
+ * Physics
+ */
+
+// World
+const world = new CANNON.World({
+  gravity: new CANNON.Vec3(0, 0, 0), // m/s²
+})
+
+// Material
+const defaultMaterial = new CANNON.Material('default')
+
+const defaultContactMaterial = new CANNON.ContactMaterial(
+    defaultMaterial,
+    defaultMaterial,
+    {
+        friction: 0.9,
+        restitution: 0.7
+    }
+)
+world.addContactMaterial(defaultContactMaterial)
+world.defaultContactMaterial = defaultContactMaterial
+
+// Cannon.js target body
+const targetShape = new CANNON.Sphere(target.geometry.parameters.radius)
+const targetBody = new CANNON.Body({
+    mass: 1,
+    position: new CANNON.Vec3(target.position.x, target.position.y, target.position.z),
+    shape: targetShape,
+})
+
+function applyImpulse(body, impulse, contactPoint) {
+    body.applyImpulse(impulse, contactPoint);
+}
+
+let haveCollided = false
+
+targetBody.addEventListener('collide', event => {
+    haveCollided = true
+    console.log('Collision detected with engine', event);
+    // if (event.contact.ni.y > 0) {  // Assuming a normal pointing somewhat upwards
+        // const bounceImpulse = new CANNON.Vec3(-5, 0, 0);
+        // bodyOne.applyImpulse(bounceImpulse, bodyOne.position);
+    //   }
+    var contact = event.contact;
+
+    // Get the normal of the contact. Make sure it points away from the surface of the stationary body
+    if (contact.bi.id === targetBody.id) { // bi is body interacting
+      var normal = contact.ni;
+    } else {
+      var normal = contact.ni.scale(-1);
+    }
+  
+    // Calculate impulse strength
+    // Example: Assuming you want to apply an impulse proportional to the impact velocity
+    // var impulseStrength = normal.scale(bodyOne.velocity.length() * bodyOne.mass * 100);
+    // faster impulse
+    var impulseStrength = normal.scale(targetBody.velocity.length() * targetBody.mass * 1000);
+    // console.log('impulseStrength :>> ', impulseStrength);
+    
+    // Apply the impulse to the stationary body at the contact point
+    applyImpulse(event.body, impulseStrength, contact.ri);
+  
+    // Optionally, you can apply a reverse impulse to the moving body for realism
+    // applyImpulse(bodyOne, impulseStrength.scale(-1), contact.rj);
+    // bodyOne.stop()
+    
+});
+
+
+targetBody.position.copy(target.position)
+
+world.addBody(targetBody)
+// END target body
+
+// Cannon.js engine body
+const engineShape = new CANNON.Sphere(molusk.geometry.parameters.radius + 0.1)
+const engineBody = new CANNON.Body({
+    mass: 1,
+    position: new CANNON.Vec3(engineGroup.position.x, engineGroup.position.y, engineGroup.position.z),
+    shape: engineShape,
+})
+
+// function applyImpulse(body, impulse, contactPoint) {
+//     body.applyImpulse(impulse, contactPoint);
+// }
+
+// let haveCollided = false
+
+// targetBody.addEventListener('collide', event => {
+//     haveCollided = true
+//     console.log('Collision detected with engine', event);
+//     // if (event.contact.ni.y > 0) {  // Assuming a normal pointing somewhat upwards
+//         // const bounceImpulse = new CANNON.Vec3(-5, 0, 0);
+//         // bodyOne.applyImpulse(bounceImpulse, bodyOne.position);
+//     //   }
+//     var contact = event.contact;
+
+//     // Get the normal of the contact. Make sure it points away from the surface of the stationary body
+//     if (contact.bi.id === targetBody.id) { // bi is body interacting
+//       var normal = contact.ni;
+//     } else {
+//       var normal = contact.ni.scale(-1);
+//     }
+  
+//     // Calculate impulse strength
+//     // Example: Assuming you want to apply an impulse proportional to the impact velocity
+//     // var impulseStrength = normal.scale(bodyOne.velocity.length() * bodyOne.mass * 100);
+//     // faster impulse
+//     var impulseStrength = normal.scale(targetBody.velocity.length() * targetBody.mass * 1000);
+//     // console.log('impulseStrength :>> ', impulseStrength);
+    
+//     // Apply the impulse to the stationary body at the contact point
+//     applyImpulse(event.body, impulseStrength, contact.ri);
+  
+//     // Optionally, you can apply a reverse impulse to the moving body for realism
+//     // applyImpulse(bodyOne, impulseStrength.scale(-1), contact.rj);
+//     // bodyOne.stop()
+    
+// });
+
+
+engineBody.position.copy(engineGroup.position)
+
+world.addBody(engineBody)
+
+var currentEngineQuaternion = engineBody.quaternion;
+var deltaQuaternion = new CANNON.Quaternion();
+// deltaQuaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), angle);
+
+// // Multiply quaternions to combine the rotations
+// currentEngineQuaternion = currentEngineQuaternion.mult(deltaQuaternion);
+
+// // Update the body's quaternion
+// engineBody.quaternion = currentEngineQuaternion;
+
+// // Update the Three.js mesh to match
+// engineGroup.quaternion.copy(engineBody.quaternion);
+
+// END engine body
 
 // LIGHTS
 
@@ -302,6 +456,9 @@ function updateDownRotation(time) {
   }
 }
 
+// Angle to rotate (in radians)
+var angle = Math.PI / 180; // 10 degrees
+
 function updateLeftRotation(time) {
   const elapsedTime = time - startLeftTime;
   const progress = elapsedTime / duration;
@@ -312,7 +469,18 @@ function updateLeftRotation(time) {
   } else if (progress <= 1) {
       // Second half: rotate back to initial position
       shellGroup.rotation.x = initialXRotation - 2 * rotationStep * (1 - progress);
-      engineGroup.rotation.y += 0.01;    
+      // engineGroup.rotation.y += 0.01;   
+
+      deltaQuaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), angle); 
+      // Multiply quaternions to combine the rotations
+      currentEngineQuaternion = currentEngineQuaternion.mult(deltaQuaternion);
+
+      // Update the body's quaternion
+      engineBody.quaternion = currentEngineQuaternion;
+
+      // Update the Three.js mesh to match
+      engineGroup.quaternion.copy(engineBody.quaternion);
+
   } else {
       // End of animation
       shellGroup.rotation.x = initialXRotation;
@@ -330,7 +498,17 @@ function updateRightRotation(time) {
   } else if (progress <= 1) {
       // Second half: rotate back to initial position
       shellGroup.rotation.x = initialXRotation + 2 * rotationStep * (1 - progress);
-      engineGroup.rotation.y += -0.01;  
+      // engineGroup.rotation.y += -0.01;  
+      deltaQuaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -angle); 
+      // Multiply quaternions to combine the rotations
+      currentEngineQuaternion = currentEngineQuaternion.mult(deltaQuaternion);
+
+      // Update the body's quaternion
+      engineBody.quaternion = currentEngineQuaternion;
+
+      // Update the Three.js mesh to match
+      engineGroup.quaternion.copy(engineBody.quaternion);
+
   } else {
       // End of animation
       shellGroup.rotation.x = initialXRotation;
@@ -392,12 +570,45 @@ function animateForward(time) {
   // Handle continuous movement based on key states
   if (keyStates['ArrowUp']) {
 
-    const speed = 1;
+    // const speed = 1;
 
-    const forward = new THREE.Vector3(-1, 0, 0); // Faces negative x-direction initially
-    forward.applyEuler(new THREE.Euler(0, engineGroup.rotation.y, 0, 'XYZ'));
+    // Function to rotate a vector by a quaternion
+    function rotateVectorByQuaternion(vector, quaternion) {
+      // Temporary quaternion and result storage
+      const result = new CANNON.Vec3();
+      const vectorQuat = new CANNON.Quaternion(vector.x, vector.y, vector.z, 0);
+      
+      // Quaternion multiplication: q * v * q^-1
+      const tempQuat = quaternion.mult(vectorQuat);
+      tempQuat.mult(quaternion.inverse(), tempQuat);
 
-    engineGroup.position.add(forward.multiplyScalar(-speed));
+      // Extract the vector part
+      result.set(tempQuat.x, tempQuat.y, tempQuat.z);
+      return result;
+    }
+
+    function getForwardVector(body) {
+      const quaternion = body.quaternion;
+      // Forward direction in local space
+      const forward = new CANNON.Vec3(1, 0, 0);
+      // Apply the quaternion to get the forward direction in world space
+      return rotateVectorByQuaternion(forward, quaternion);
+    }
+
+    // Get the forward vector
+    const forward = getForwardVector(engineBody);
+
+    // Define the speed or force magnitude
+    const speed = 10; // Change this value to whatever is suitable
+
+    // Apply the force in the forward direction
+    const force = forward.scale(speed);
+    engineBody.applyForce(force, engineBody.position);
+
+    // const forward = new THREE.Vector3(-1, 0, 0); // Faces negative x-direction initially
+    // forward.applyEuler(new THREE.Euler(0, engineGroup.rotation.y, 0, 'XYZ'));
+
+    // engineGroup.position.add(forward.multiplyScalar(-speed));
   }
   if (keyStates['ArrowDown']) {
     const speed = 1;
@@ -405,27 +616,45 @@ function animateForward(time) {
     const backward = new THREE.Vector3(-1, 0, 0); // Faces negative x-direction initially
     backward.applyEuler(new THREE.Euler(0, engineGroup.rotation.y, 0, 'XYZ'));
 
-    // engineGroup.position.x -= 0.1 * deltaTime;  // Move at 1 unit per second
+    engineGroup.position.x -= 0.1 * deltaTime;  // Move at 1 unit per second
     engineGroup.position.add(backward.multiplyScalar(speed));
   }
-  if (keyStates['ArrowLeft']) {
-    engineGroup.rotation.y += 0.1;  // Move at 1 unit per second
-  }
-  if (keyStates['ArrowRight']) {
-    engineGroup.rotation.y -= 0.1;  // Move at 1 unit per second
-  }
+  // if (keyStates['ArrowLeft']) {
+  //   engineBody.rotation.y += 0.1;  // Move at 1 unit per second
+  // }
+  // if (keyStates['ArrowRight']) {
+  //   engineBody.rotation.y -= 0.1;  // Move at 1 unit per second
+  // }
 
   renderer.render(scene, camera);
 }
 requestAnimationFrame(animateForward);
 
 /**
+ * Physics Objects
+ */
+const objectsToUpdate = []
+
+objectsToUpdate.push({ mesh: engineGroup, body: engineBody })
+objectsToUpdate.push({ mesh: target, body: targetBody })
+
+/**
  * Animate
  */
 const clock = new THREE.Clock()
+let oldElapsedTime = 0
 
 const tick = () => {
   const elapsedTime = clock.getElapsedTime()
+  const deltaTime = elapsedTime - oldElapsedTime
+  oldElapsedTime = elapsedTime
+
+  world.step(1 / 60, deltaTime, 3)
+
+  for (const object of objectsToUpdate) {
+    object.mesh.position.copy(object.body.position)
+    object.mesh.quaternion.copy(object.body.quaternion)
+}
 
   // Update objects
   torusOne.rotation.y = elapsedTime * 2
