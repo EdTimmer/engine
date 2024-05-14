@@ -239,8 +239,8 @@ targetBody.addEventListener('collide', event => {
     applyImpulse(event.body, impulseStrength, contact.ri);
   
     // Optionally, you can apply a reverse impulse to the moving body for realism
-    // applyImpulse(bodyOne, impulseStrength.scale(-1), contact.rj);
-    // bodyOne.stop()
+    applyImpulse(engineBody, impulseStrength.scale(-1), contact.rj);
+    // engineBody.stop()
     
 });
 
@@ -611,13 +611,45 @@ function animateForward(time) {
     // engineGroup.position.add(forward.multiplyScalar(-speed));
   }
   if (keyStates['ArrowDown']) {
-    const speed = 1;
+    // const speed = 1;
 
-    const backward = new THREE.Vector3(-1, 0, 0); // Faces negative x-direction initially
-    backward.applyEuler(new THREE.Euler(0, engineGroup.rotation.y, 0, 'XYZ'));
+    // const backward = new THREE.Vector3(-1, 0, 0); // Faces negative x-direction initially
+    // backward.applyEuler(new THREE.Euler(0, engineGroup.rotation.y, 0, 'XYZ'));
 
-    engineGroup.position.x -= 0.1 * deltaTime;  // Move at 1 unit per second
-    engineGroup.position.add(backward.multiplyScalar(speed));
+    // engineGroup.position.x -= 0.1 * deltaTime;  // Move at 1 unit per second
+    // engineGroup.position.add(backward.multiplyScalar(speed));
+    // Function to rotate a vector by a quaternion
+    function rotateVectorByQuaternion(vector, quaternion) {
+      // Temporary quaternion and result storage
+      const result = new CANNON.Vec3();
+      const vectorQuat = new CANNON.Quaternion(vector.x, vector.y, vector.z, 0);
+      
+      // Quaternion multiplication: q * v * q^-1
+      const tempQuat = quaternion.mult(vectorQuat);
+      tempQuat.mult(quaternion.inverse(), tempQuat);
+
+      // Extract the vector part
+      result.set(tempQuat.x, tempQuat.y, tempQuat.z);
+      return result;
+    }
+
+    function getBackwardVector(body) {
+      const quaternion = body.quaternion;
+      // Backward direction in local space
+      const backward = new CANNON.Vec3(-1, 0, 0);
+      // Apply the quaternion to get the backward direction in world space
+      return rotateVectorByQuaternion(backward, quaternion);
+    }
+
+    // Get the backward vector
+    const backward = getBackwardVector(engineBody);
+
+    // Define the speed or force magnitude
+    const speed = 10; // Change this value to whatever is suitable
+
+    // Apply the force in the backward direction
+    const force = backward.scale(speed);
+    engineBody.applyForce(force, engineBody.position);
   }
   // if (keyStates['ArrowLeft']) {
   //   engineBody.rotation.y += 0.1;  // Move at 1 unit per second
