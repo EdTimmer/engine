@@ -170,8 +170,13 @@ headGroup.rotation.z = -1.8;
 const shellGroup = new THREE.Group();
 shellGroup.add(seal, molusk, headGroup);
 
+// shellGroup.position.x = 0;
+// shellGroup.rotateY(Math.PI / 2);
+
 const engineGroup = new THREE.Group();
 engineGroup.add(coreGroup, shellGroup);
+
+// engineGroup.rotateOnAxis(new THREE.Vector3(0, 1, 0), Math.PI / 2);
 
 scene.add(engineGroup);
 
@@ -358,9 +363,9 @@ window.addEventListener('resize', () =>
 
 // Camera
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 1000)
-camera.position.x = 0
-camera.position.y = 0
-camera.position.z = 30
+camera.position.x = -30
+camera.position.y = 5
+camera.position.z = 15
 scene.add(camera)
 
 // Controls
@@ -688,6 +693,7 @@ const tick = () => {
     object.mesh.quaternion.copy(object.body.quaternion)
 }
 
+
   // Update objects
   torusOne.rotation.y = elapsedTime * 2
   torusTwo.rotation.y = elapsedTime * 0.1
@@ -698,6 +704,12 @@ const tick = () => {
   torusTwo.rotation.x = elapsedTime * (-2)
   torusThree.rotation.x = elapsedTime * (-0.5)
   headSphere.rotation.x = elapsedTime * (-1)
+
+  // Make the camera follow the mesh
+  camera.position.x = engineGroup.position.x - 30;
+  camera.position.y = engineGroup.position.y + 5; // Offset to view the cube from above
+  camera.position.z = engineGroup.position.z + 15; // Offset to view th
+
 
   // Update controls
   controls.update()
