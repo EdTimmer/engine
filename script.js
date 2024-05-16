@@ -706,9 +706,9 @@ const tick = () => {
   headSphere.rotation.x = elapsedTime * (-1)
 
   // Make the camera follow the mesh
-  camera.position.x = engineGroup.position.x - 30;
-  camera.position.y = engineGroup.position.y + 5; // Offset to view the cube from above
-  camera.position.z = engineGroup.position.z + 15; // Offset to view th
+  // camera.position.x = engineGroup.position.x - 30;
+  // camera.position.y = engineGroup.position.y + 5; // Offset to view the cube from above
+  // camera.position.z = engineGroup.position.z + 15; // Offset to view th
 
 
   // Update controls
