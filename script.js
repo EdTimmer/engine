@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import * as CANNON from 'cannon'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js'
 import GUI from 'lil-gui'
@@ -130,6 +131,67 @@ const headSphere = new THREE.Mesh(new THREE.IcosahedronGeometry(1.7, 0), materia
 // headSpherePositionFolder.add(headSphere.position, 'x', -20, 20).name('X-axis');
 // headSpherePositionFolder.add(headSphere.position, 'y', -20, 20).name('Y-axis');
 
+// Target
+
+// const targetMaterial = new THREE.MeshPhysicalMaterial({ color: 'blue', emissive: 'black', roughness: 0, metalness: 0 })  // { color: '#B6BBC4', emissive: 'black', roughness: 0.5, metalness: 0.5}
+// targetMaterial.transmission = 0
+// targetMaterial.ior = 1.592
+// targetMaterial.thickness = 0.2379
+
+// const target = new THREE.Mesh(new THREE.SphereGeometry(4, 32, 32), targetMaterial)
+// target.position.set(30, 0, 0)
+// target.scale.set(0.5, 0.5, 0.5)
+// scene.add(target)
+
+// const targetTwo= target.clone()
+// targetTwo.position.set(-30, 0, 0)
+// scene.add(targetTwo)
+
+// Targets
+const targets = new THREE.Group()
+// scene.add(targets)
+
+const targetMeshesArray = []
+
+function getRandomColor() {;
+  const letters = '0123456789ABCDEF';
+  let color = '#';
+  for (let i = 0; i < 6; i++) {
+      color += letters[Math.floor(Math.random() * 16)];
+  }
+  // console.log('color :>> ', color);
+  return color;
+}
+
+
+
+const targetGeometry = new THREE.SphereGeometry(4, 32, 32)
+
+for(let i = 0; i < 10; i++) {
+
+    const targetMaterial = new THREE.MeshPhysicalMaterial({ emissive: 'black', roughness: 0, metalness: 0 })  // { color: '#B6BBC4', emissive: 'black', roughness: 0.5, metalness: 0.5}
+    targetMaterial.transmission = 0
+    targetMaterial.ior = 1.592
+    targetMaterial.thickness = 0.2379
+    const targetColor = getRandomColor()
+    targetMaterial.color = new THREE.Color(targetColor)
+
+    const angle = Math.random() * Math.PI * 2
+    const radius = 60 + Math.random() * 20
+    const x = Math.sin(angle) * radius
+    const z = Math.cos(angle) * radius
+
+    const target = new THREE.Mesh(targetGeometry, targetMaterial)
+    target.position.set(x, 0, z)
+    target.castShadow = true
+
+    targetMeshesArray.push(target)
+
+    targets.add(target)
+}
+
+scene.add(targets)
+
 // GROUPS
 
 const coreGroup = new THREE.Group();
@@ -161,6 +223,99 @@ const engineGroup = new THREE.Group();
 engineGroup.add(coreGroup, shellGroup);
 
 scene.add(engineGroup);
+
+/**
+ * Physics
+ */
+
+// World
+const world = new CANNON.World({
+  gravity: new CANNON.Vec3(0, 0, 0), // m/s²
+})
+
+// Material
+const defaultMaterial = new CANNON.Material('default')
+
+const defaultContactMaterial = new CANNON.ContactMaterial(
+    defaultMaterial,
+    defaultMaterial,
+    {
+        friction: 0.9,
+        restitution: 0.7
+    }
+)
+world.addContactMaterial(defaultContactMaterial)
+world.defaultContactMaterial = defaultContactMaterial
+
+// Cannon.js target body
+// objectsToUpdate.push({ mesh: target, body: targetBody })
+
+const targetMeshesAndBodies = []
+
+const makeTargetBodies = (target) => {
+  const targetShape = new CANNON.Sphere(target.geometry.parameters.radius)
+  const targetBody = new CANNON.Body({
+      mass: 1,
+      position: new CANNON.Vec3(target.position.x, target.position.y, target.position.z),
+      shape: targetShape,
+  })
+
+  function applyImpulse(body, impulse, contactPoint) {
+      body.applyImpulse(impulse, contactPoint);
+  }
+
+  targetBody.addEventListener('collide', event => {
+      var contact = event.contact;
+
+      // Get the normal of the contact. Make sure it points away from the surface of the stationary body
+      if (contact.bi.id === targetBody.id) { // bi is body interacting
+        var normal = contact.ni;
+      } else {
+        var normal = contact.ni.scale(-1);
+      }
+
+      // Calculate impulse strength
+      var impulseStrength = normal.scale(targetBody.velocity.length() * targetBody.mass * 1000);
+
+      // Apply the impulse to the stationary body at the contact point
+      applyImpulse(event.body, impulseStrength, contact.ri);
+
+      // Stop engine when it collides with target
+      // simulateArrowUpKeyUp()
+      // disableArrowUpKeyDown()
+
+  });
+
+
+  targetBody.position.copy(target.position)
+  targetMeshesAndBodies.push({ mesh: target, body: targetBody })
+
+  world.addBody(targetBody)
+}
+
+targetMeshesArray.forEach(target => {
+  makeTargetBodies(target)
+})
+
+
+// END target body
+
+// Cannon.js engine body
+const engineShape = new CANNON.Sphere(molusk.geometry.parameters.radius + 5)
+const engineBody = new CANNON.Body({
+    mass: 1,
+    position: new CANNON.Vec3(engineGroup.position.x, engineGroup.position.y, engineGroup.position.z),
+    shape: engineShape,
+})
+
+
+
+
+engineBody.position.copy(engineGroup.position)
+
+world.addBody(engineBody)
+
+// END engine body
 
 // LIGHTS
 
@@ -356,6 +511,39 @@ window.addEventListener('keydown', function(event) {
   }
 });
 
+// Function to simulate keyup event
+function simulateArrowUpKeyUp() {
+  const arrowUpEvent = new KeyboardEvent('keyup', {
+      key: 'ArrowUp',
+      code: 'ArrowUp',
+      keyCode: 38, // 38 is the keyCode for the ArrowUp key
+      which: 38,
+      bubbles: true,
+      cancelable: true
+  });
+
+  // Dispatch the event on the desired element or the document
+  document.dispatchEvent(arrowUpEvent);
+}
+
+// Function to disable Arrow Up keydown event
+function disableArrowUpKeyDown() {
+  function preventArrowUpKeyDown(event) {
+      if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          event.stopPropagation();
+      }
+  }
+
+  // Add event listener to prevent Arrow Up keydown event
+  document.addEventListener('keydown', preventArrowUpKeyDown, true);
+
+  // Remove the event listener after 1 second
+  setTimeout(() => {
+      document.removeEventListener('keydown', preventArrowUpKeyDown, true);
+  }, 1000);
+}
+
 // Listen for key up to reset the animation flag
 window.addEventListener('keyup', function(event) {
   if (event.key === 'ArrowUp') {
@@ -420,12 +608,38 @@ function animateForward(time) {
 requestAnimationFrame(animateForward);
 
 /**
+ * Physics Objects
+ */
+const objectsToUpdate = []
+
+objectsToUpdate.push({ mesh: engineGroup, body: engineBody })
+console.log('targetMeshesAndBodies :>> ', targetMeshesAndBodies);
+targetMeshesAndBodies.forEach(target => {
+  objectsToUpdate.push({ mesh: target.mesh, body: target.body })
+})
+
+/**
  * Animate
  */
 const clock = new THREE.Clock()
+let oldElapsedTime = 0
 
 const tick = () => {
   const elapsedTime = clock.getElapsedTime()
+  const deltaTime = elapsedTime - oldElapsedTime
+  oldElapsedTime = elapsedTime
+
+  world.step(1 / 60, deltaTime, 3)
+
+  for (const object of objectsToUpdate) {
+    if (object.mesh === engineGroup) {
+      object.body.position.copy(object.mesh.position)
+      object.body.quaternion.copy(object.mesh.quaternion)
+    } else {
+      object.mesh.position.copy(object.body.position)
+      object.mesh.quaternion.copy(object.body.quaternion)
+    }
+}
 
   // Update objects
   torusOne.rotation.y = elapsedTime * 2
