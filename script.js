@@ -152,7 +152,7 @@ const targetGeometry = new THREE.SphereGeometry(4, 32, 32)
 const numberOfTargets = 10
 for(let i = 0; i < numberOfTargets; i++) {
 
-    const targetMaterial = new THREE.MeshPhysicalMaterial({ emissive: 'black', roughness: 0, metalness: 0 })  // { color: '#B6BBC4', emissive: 'black', roughness: 0.5, metalness: 0.5}
+    const targetMaterial = new THREE.MeshPhysicalMaterial({ emissive: 'black', roughness: 0, metalness: 0.5 })  // { color: '#B6BBC4', emissive: 'black', roughness: 0.5, metalness: 0.5}
     targetMaterial.transmission = 0
     targetMaterial.ior = 1.592
     targetMaterial.thickness = 0.2379
@@ -167,7 +167,7 @@ for(let i = 0; i < numberOfTargets; i++) {
     const target = new THREE.Mesh(targetGeometry, targetMaterial)
     target.position.set(x, 0, z)
     target.castShadow = true
-    target.scale.set(1, 1, 1)
+    target.scale.set(0.5, 1, 1)
 
     targetMeshesArray.push(target)
 
@@ -235,7 +235,7 @@ world.defaultContactMaterial = defaultContactMaterial
 // objectsToUpdate.push({ mesh: target, body: targetBody })
 
 const targetMeshesAndBodies = []
-// const targetBodiesArray = []
+const targetBodiesArray = []
 
 const makeTargetBodies = (target) => {
   const targetShape = new CANNON.Sphere(target.geometry.parameters.radius)
@@ -245,7 +245,7 @@ const makeTargetBodies = (target) => {
       shape: targetShape,
   })
   // targetBody.sleep()
-  // targetBodiesArray.push(targetBody)
+  targetBodiesArray.push(targetBody)
 
   function applyImpulse(body, impulse, contactPoint) {
       body.applyImpulse(impulse, contactPoint);
@@ -294,7 +294,7 @@ targetMeshesArray.forEach(target => {
 // END target body
 
 // Cannon.js engine body
-const engineShape = new CANNON.Sphere(molusk.geometry.parameters.radius + 5)
+const engineShape = new CANNON.Sphere(molusk.geometry.parameters.radius + 10)
 const engineBody = new CANNON.Body({
     mass: 1,
     position: new CANNON.Vec3(engineGroup.position.x, engineGroup.position.y, engineGroup.position.z),
@@ -309,7 +309,7 @@ world.addBody(engineBody)
 
 // Border Cylinder
 // Step 1: Create the Trimesh for the Inner Cylinder Boundary
-const innerRadius = 150; // Inner radius of the cylinder
+const innerRadius = 200; // Inner radius of the cylinder
 const height = 250; // Height of the cylinder
 
 // Function to create a Trimesh from a CylinderGeometry
@@ -700,6 +700,20 @@ objectsToUpdate.push({ mesh: engineGroup, body: engineBody })
 targetMeshesAndBodies.forEach(target => {
   objectsToUpdate.push({ mesh: target.mesh, body: target.body })
 })
+
+const maxAngularVelocity = 5
+world.addEventListener('postStep', function() {
+  targetBodiesArray.forEach(body => {
+    // Calculate the magnitude of the angular velocity vector
+    const angularSpeed = body.angularVelocity.length();
+    
+    // If the angular speed exceeds the maximum, scale it down
+    if (angularSpeed > maxAngularVelocity) {
+      body.angularVelocity.scale(maxAngularVelocity / angularSpeed, body.angularVelocity);
+    }
+  });
+});
+
 
 /**
  * Animate
