@@ -131,25 +131,8 @@ const headSphere = new THREE.Mesh(new THREE.IcosahedronGeometry(1.7, 0), materia
 // headSpherePositionFolder.add(headSphere.position, 'x', -20, 20).name('X-axis');
 // headSpherePositionFolder.add(headSphere.position, 'y', -20, 20).name('Y-axis');
 
-// Target
-
-// const targetMaterial = new THREE.MeshPhysicalMaterial({ color: 'blue', emissive: 'black', roughness: 0, metalness: 0 })  // { color: '#B6BBC4', emissive: 'black', roughness: 0.5, metalness: 0.5}
-// targetMaterial.transmission = 0
-// targetMaterial.ior = 1.592
-// targetMaterial.thickness = 0.2379
-
-// const target = new THREE.Mesh(new THREE.SphereGeometry(4, 32, 32), targetMaterial)
-// target.position.set(30, 0, 0)
-// target.scale.set(0.5, 0.5, 0.5)
-// scene.add(target)
-
-// const targetTwo= target.clone()
-// targetTwo.position.set(-30, 0, 0)
-// scene.add(targetTwo)
-
-// Targets
+/// Targets
 const targets = new THREE.Group()
-// scene.add(targets)
 
 const targetMeshesArray = []
 
@@ -166,8 +149,8 @@ function getRandomColor() {;
 
 
 const targetGeometry = new THREE.SphereGeometry(4, 32, 32)
-
-for(let i = 0; i < 10; i++) {
+const numberOfTargets = 10
+for(let i = 0; i < numberOfTargets; i++) {
 
     const targetMaterial = new THREE.MeshPhysicalMaterial({ emissive: 'black', roughness: 0, metalness: 0 })  // { color: '#B6BBC4', emissive: 'black', roughness: 0.5, metalness: 0.5}
     targetMaterial.transmission = 0
@@ -184,6 +167,7 @@ for(let i = 0; i < 10; i++) {
     const target = new THREE.Mesh(targetGeometry, targetMaterial)
     target.position.set(x, 0, z)
     target.castShadow = true
+    target.scale.set(1, 1, 1)
 
     targetMeshesArray.push(target)
 
@@ -251,6 +235,7 @@ world.defaultContactMaterial = defaultContactMaterial
 // objectsToUpdate.push({ mesh: target, body: targetBody })
 
 const targetMeshesAndBodies = []
+// const targetBodiesArray = []
 
 const makeTargetBodies = (target) => {
   const targetShape = new CANNON.Sphere(target.geometry.parameters.radius)
@@ -259,6 +244,8 @@ const makeTargetBodies = (target) => {
       position: new CANNON.Vec3(target.position.x, target.position.y, target.position.z),
       shape: targetShape,
   })
+  // targetBody.sleep()
+  // targetBodiesArray.push(targetBody)
 
   function applyImpulse(body, impulse, contactPoint) {
       body.applyImpulse(impulse, contactPoint);
@@ -266,7 +253,6 @@ const makeTargetBodies = (target) => {
 
   targetBody.addEventListener('collide', event => {
       var contact = event.contact;
-
       // Get the normal of the contact. Make sure it points away from the surface of the stationary body
       if (contact.bi.id === targetBody.id) { // bi is body interacting
         var normal = contact.ni;
@@ -275,7 +261,8 @@ const makeTargetBodies = (target) => {
       }
 
       // Calculate impulse strength
-      var impulseStrength = normal.scale(targetBody.velocity.length() * targetBody.mass * 1000);
+      // var impulseStrength = normal.scale(targetBody.velocity.length() * targetBody.mass * 1000);
+      var impulseStrength = normal.scale(10);
 
       // Apply the impulse to the stationary body at the contact point
       applyImpulse(event.body, impulseStrength, contact.ri);
@@ -297,6 +284,12 @@ targetMeshesArray.forEach(target => {
   makeTargetBodies(target)
 })
 
+// Wake up bodies after some time or event
+// setTimeout(() => {
+//   targetBodiesArray.forEach(body => {
+//     body.wakeUp();
+//   });
+// }, 1000);
 
 // END target body
 
@@ -308,14 +301,104 @@ const engineBody = new CANNON.Body({
     shape: engineShape,
 })
 
-
-
-
 engineBody.position.copy(engineGroup.position)
 
 world.addBody(engineBody)
 
 // END engine body
+
+// Border Cylinder
+// Step 1: Create the Trimesh for the Inner Cylinder Boundary
+const innerRadius = 150; // Inner radius of the cylinder
+const height = 250; // Height of the cylinder
+
+// Function to create a Trimesh from a CylinderGeometry
+function createTrimeshFromGeometry(geometry) {
+  const vertices = [];
+  const indices = [];
+
+  // Extract vertices from the geometry
+  for (let i = 0; i < geometry.attributes.position.count; i++) {
+    vertices.push(geometry.attributes.position.array[i * 3]);
+    vertices.push(geometry.attributes.position.array[i * 3 + 1]);
+    vertices.push(geometry.attributes.position.array[i * 3 + 2]);
+  }
+
+  // Extract indices from the geometry
+  for (let i = 0; i < geometry.index.count; i++) {
+    indices.push(geometry.index.array[i]);
+  }
+
+  return new CANNON.Trimesh(vertices, indices);
+}
+
+// Create CylinderGeometry for the inner cylinder
+const cylinderGeometry = new THREE.CylinderGeometry(innerRadius, innerRadius, height, 32, 1, true);
+const trimesh = createTrimeshFromGeometry(cylinderGeometry);
+
+// Create a static body using the Trimesh
+const innerCylinderBody = new CANNON.Body({
+  mass: 0, // Static body
+});
+innerCylinderBody.addShape(trimesh);
+innerCylinderBody.position.set(0, 25, 0); // Position the cylinder
+
+// Rotate the body to align with XZ plane
+const q = new CANNON.Quaternion();
+q.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), Math.PI);
+innerCylinderBody.quaternion.copy(q);
+
+// Step 2: Add the Cylinder to the World
+world.addBody(innerCylinderBody);
+
+// Step 3: Create the Visual Representation in Three.js
+const cylinderMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00, wireframe: false, transparent: true, opacity: 0});
+const cylinderMesh = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
+scene.add(cylinderMesh);
+
+// Sync the Three.js mesh position and rotation with Cannon.js body
+cylinderMesh.position.copy(innerCylinderBody.position);
+cylinderMesh.quaternion.copy(innerCylinderBody.quaternion);
+
+// LIDS
+// Step 3: Create the Plane Shapes for the Lids
+const topPlaneShape = new CANNON.Plane();
+const bottomPlaneShape = new CANNON.Plane();
+
+// Create Bodies for the Lids
+const topPlaneBody = new CANNON.Body({
+  mass: 0, // Static body
+  shape: topPlaneShape,
+  position: new CANNON.Vec3(0, 50, 0)
+});
+topPlaneBody.quaternion.setFromEuler(Math.PI / 2, 0, 0);
+
+const bottomPlaneBody = new CANNON.Body({
+  mass: 0, // Static body
+  shape: bottomPlaneShape,
+  position: new CANNON.Vec3(0, -50, 0)
+});
+bottomPlaneBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+
+// Add the Plane Bodies to the World
+// if (targetMeshesArray.length > 0) {
+  world.addBody(topPlaneBody);
+  world.addBody(bottomPlaneBody);
+// }
+
+// Visual representation for the lids (optional)
+const planeGeometry = new THREE.PlaneGeometry(innerRadius * 2, innerRadius * 2);
+const planeMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff, wireframe: false, opacity: 0, transparent: true});
+
+const topPlaneMesh = new THREE.Mesh(planeGeometry, planeMaterial);
+topPlaneMesh.rotation.x = Math.PI / 2;
+topPlaneMesh.position.set(topPlaneBody.position.x, topPlaneBody.position.y, topPlaneBody.position.z);
+scene.add(topPlaneMesh);
+
+const bottomPlaneMesh = new THREE.Mesh(planeGeometry, planeMaterial);
+bottomPlaneMesh.rotation.x = -Math.PI / 2;
+bottomPlaneMesh.position.set(bottomPlaneBody.position.x, bottomPlaneBody.position.y, bottomPlaneBody.position.z);
+scene.add(bottomPlaneMesh);
 
 // LIGHTS
 
@@ -527,22 +610,22 @@ function simulateArrowUpKeyUp() {
 }
 
 // Function to disable Arrow Up keydown event
-function disableArrowUpKeyDown() {
-  function preventArrowUpKeyDown(event) {
-      if (event.key === 'ArrowUp') {
-          event.preventDefault();
-          event.stopPropagation();
-      }
-  }
+// function disableArrowUpKeyDown() {
+//   function preventArrowUpKeyDown(event) {
+//       if (event.key === 'ArrowUp') {
+//           event.preventDefault();
+//           event.stopPropagation();
+//       }
+//   }
 
-  // Add event listener to prevent Arrow Up keydown event
-  document.addEventListener('keydown', preventArrowUpKeyDown, true);
+//   // Add event listener to prevent Arrow Up keydown event
+//   document.addEventListener('keydown', preventArrowUpKeyDown, true);
 
-  // Remove the event listener after 1 second
-  setTimeout(() => {
-      document.removeEventListener('keydown', preventArrowUpKeyDown, true);
-  }, 1000);
-}
+//   // Remove the event listener after 1 second
+//   setTimeout(() => {
+//       document.removeEventListener('keydown', preventArrowUpKeyDown, true);
+//   }, 1000);
+// }
 
 // Listen for key up to reset the animation flag
 window.addEventListener('keyup', function(event) {
@@ -613,7 +696,7 @@ requestAnimationFrame(animateForward);
 const objectsToUpdate = []
 
 objectsToUpdate.push({ mesh: engineGroup, body: engineBody })
-console.log('targetMeshesAndBodies :>> ', targetMeshesAndBodies);
+
 targetMeshesAndBodies.forEach(target => {
   objectsToUpdate.push({ mesh: target.mesh, body: target.body })
 })
@@ -628,6 +711,7 @@ const tick = () => {
   const elapsedTime = clock.getElapsedTime()
   const deltaTime = elapsedTime - oldElapsedTime
   oldElapsedTime = elapsedTime
+
 
   world.step(1 / 60, deltaTime, 3)
 
@@ -665,3 +749,4 @@ const tick = () => {
 }
 
 tick()
+
