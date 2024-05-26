@@ -582,39 +582,6 @@ window.addEventListener('keydown', function(event) {
   }
 });
 
-// Function to simulate keyup event
-function simulateArrowUpKeyUp() {
-  const arrowUpEvent = new KeyboardEvent('keyup', {
-      key: 'ArrowUp',
-      code: 'ArrowUp',
-      keyCode: 38, // 38 is the keyCode for the ArrowUp key
-      which: 38,
-      bubbles: true,
-      cancelable: true
-  });
-
-  // Dispatch the event on the desired element or the document
-  document.dispatchEvent(arrowUpEvent);
-}
-
-// Function to disable Arrow Up keydown event
-// function disableArrowUpKeyDown() {
-//   function preventArrowUpKeyDown(event) {
-//       if (event.key === 'ArrowUp') {
-//           event.preventDefault();
-//           event.stopPropagation();
-//       }
-//   }
-
-//   // Add event listener to prevent Arrow Up keydown event
-//   document.addEventListener('keydown', preventArrowUpKeyDown, true);
-
-//   // Remove the event listener after 1 second
-//   setTimeout(() => {
-//       document.removeEventListener('keydown', preventArrowUpKeyDown, true);
-//   }, 1000);
-// }
-
 // Listen for key up to reset the animation flag
 window.addEventListener('keyup', function(event) {
   if (event.key === 'ArrowUp') {
@@ -775,6 +742,215 @@ document.addEventListener('keydown', function(event) {
       }, 100);
   }
 });
+
+/**
+ * Screen Buttons
+ */
+
+// ESCAPE KEY
+function handleKeyPress(key) {
+  // Create an artificial keydown event
+  const event = new KeyboardEvent('keydown', { key: key });
+  // Dispatch the event
+  document.dispatchEvent(event);
+}
+
+// Add event listeners for div clicks
+document.getElementById('escape-key').addEventListener('click', () => {
+  handleKeyPress('Escape');
+});
+
+// ARROW UP
+// Function to simulate keydown event
+function simulateArrowUpKeyDown() {
+    const arrowUpEvent = new KeyboardEvent('keydown', {
+        key: 'ArrowUp',
+        code: 'ArrowUp',
+        keyCode: 38, // 38 is the keyCode for the ArrowUp key
+        which: 38,
+        bubbles: true,
+        cancelable: true
+    });
+    document.dispatchEvent(arrowUpEvent);
+}
+
+// Function to simulate keyup event
+function simulateArrowUpKeyUp() {
+  const arrowUpEvent = new KeyboardEvent('keyup', {
+      key: 'ArrowUp',
+      code: 'ArrowUp',
+      keyCode: 38, // 38 is the keyCode for the ArrowUp key
+      which: 38,
+      bubbles: true,
+      cancelable: true
+  });
+  document.dispatchEvent(arrowUpEvent);
+}
+
+// Function to start continuous key press simulation
+function startArrowUpKeyPress() {
+    simulateArrowUpKeyDown(); // Simulate an initial key press
+}
+
+// Function to stop continuous key press simulation
+function stopArrowUpKeyPress() {
+    simulateArrowUpKeyUp()
+}
+
+// Add event listeners for the arrow-up div
+const arrowUpDiv = document.getElementById('arrow-up');
+arrowUpDiv.addEventListener('mousedown', startArrowUpKeyPress);
+arrowUpDiv.addEventListener('touchstart', startArrowUpKeyPress);
+
+// Add event listeners to the document to ensure we capture the mouseup event
+document.addEventListener('mouseup', stopArrowUpKeyPress);
+document.addEventListener('mouseleave', stopArrowUpKeyPress); // Stop if the mouse leaves the document
+document.addEventListener('touchend', stopArrowUpKeyPress);
+document.addEventListener('touchcancel', stopArrowUpKeyPress); 
+
+// ARROW LEFT
+// Function to simulate keydown event for ArrowLeft
+function simulateArrowLeftKeyDown() {
+  const arrowLeftEvent = new KeyboardEvent('keydown', {
+      key: 'ArrowLeft',
+      code: 'ArrowLeft',
+      keyCode: 37, // 37 is the keyCode for the ArrowLeft key
+      which: 37,
+      bubbles: true,
+      cancelable: true
+  });
+  document.dispatchEvent(arrowLeftEvent);
+}
+
+// Function to simulate keyup event for ArrowLeft
+function simulateArrowLeftKeyUp() {
+  const arrowLeftEvent = new KeyboardEvent('keyup', {
+      key: 'ArrowLeft',
+      code: 'ArrowLeft',
+      keyCode: 37, // 37 is the keyCode for the ArrowLeft key
+      which: 37,
+      bubbles: true,
+      cancelable: true
+  });
+  document.dispatchEvent(arrowLeftEvent);
+}
+
+// Function to start continuous key press simulation
+function startArrowLeftKeyPress() {
+  simulateArrowLeftKeyDown(); // Simulate an initial key press
+}
+
+// Function to stop continuous key press simulation
+function stopArrowLeftKeyPress() {
+  simulateArrowLeftKeyUp()
+}
+
+// Add event listeners for the arrow-left div
+const arrowLeftDiv = document.getElementById('arrow-left');
+arrowLeftDiv.addEventListener('mousedown', startArrowLeftKeyPress);
+arrowLeftDiv.addEventListener('touchstart', startArrowLeftKeyPress);
+
+// Add event listeners to the document to ensure we capture the mouseup event
+document.addEventListener('mouseup', stopArrowLeftKeyPress);
+document.addEventListener('mouseleave', stopArrowLeftKeyPress); // Stop if the mouse leaves the document
+document.addEventListener('touchend', stopArrowLeftKeyPress);
+document.addEventListener('touchcancel', stopArrowLeftKeyPress); 
+
+// ARROW RIGHT
+// Function to simulate keydown event for ArrowRight
+function simulateArrowRightKeyDown() {
+  const arrowRightEvent = new KeyboardEvent('keydown', {
+      key: 'ArrowRight',
+      code: 'ArrowRight',
+      keyCode: 39, // 39 is the keyCode for the ArrowRight key
+      which: 39,
+      bubbles: true,
+      cancelable: true
+  });
+  document.dispatchEvent(arrowRightEvent);
+}
+
+// Function to simulate keyup event for ArrowRight
+function simulateArrowRightKeyUp() {
+  const arrowRightEvent = new KeyboardEvent('keyup', {
+      key: 'ArrowRight',
+      code: 'ArrowRight',
+      keyCode: 39, // 39 is the keyCode for the ArrowRight key
+      which: 39,
+      bubbles: true,
+      cancelable: true
+  });
+  document.dispatchEvent(arrowRightEvent);
+}
+
+// Function to start continuous key press simulation
+function startArrowRightKeyPress() {
+  simulateArrowRightKeyDown(); // Simulate an initial key press
+}
+
+// Function to stop continuous key press simulation
+function stopArrowRightKeyPress() {
+  simulateArrowRightKeyUp()
+}
+
+// Add event listeners for the arrow-right div
+const arrowRightDiv = document.getElementById('arrow-right');
+arrowRightDiv.addEventListener('mousedown', startArrowRightKeyPress);
+arrowRightDiv.addEventListener('touchstart', startArrowRightKeyPress);
+
+// Add event listeners to the document to ensure we capture the mouseup event
+document.addEventListener('mouseup', stopArrowRightKeyPress);
+document.addEventListener('mouseleave', stopArrowRightKeyPress); // Stop if the mouse leaves the document
+document.addEventListener('touchend', stopArrowRightKeyPress);
+document.addEventListener('touchcancel', stopArrowRightKeyPress); 
+
+// ARROW DOWN
+// Function to simulate keydown event for ArrowDown
+function simulateArrowDownKeyDown() {
+  const arrowDownEvent = new KeyboardEvent('keydown', {
+      key: 'ArrowDown',
+      code: 'ArrowDown',
+      keyCode: 40, // 40 is the keyCode for the ArrowDown key
+      which: 40,
+      bubbles: true,
+      cancelable: true
+  });
+  document.dispatchEvent(arrowDownEvent);
+}
+
+// Function to simulate keyup event for ArrowDown
+function simulateArrowDownKeyUp() {
+  const arrowDownEvent = new KeyboardEvent('keyup', {
+      key: 'ArrowDown',
+      code: 'ArrowDown',
+      keyCode: 40, // 40 is the keyCode for the ArrowDown key
+      which: 40,
+      bubbles: true,
+      cancelable: true
+  });
+  document.dispatchEvent(arrowDownEvent);
+}
+
+// Function to start continuous key press simulation
+function startArrowDownKeyPress() {
+  simulateArrowDownKeyDown(); // Simulate an initial key press
+}
+
+// Function to stop continuous key press simulation
+function stopArrowDownKeyPress() {
+  simulateArrowDownKeyUp()
+}
+
+// Add event listeners for the arrow-down div
+const arrowDownDiv = document.getElementById('arrow-down');
+arrowDownDiv.addEventListener('mousedown', startArrowDownKeyPress);
+arrowDownDiv.addEventListener('touchstart', startArrowDownKeyPress);
+
+// Add event listeners to the document to ensure we capture the mouseup event
+document.addEventListener('mouseup', stopArrowDownKeyPress);
+document.addEventListener('mouseleave', stopArrowDownKeyPress); // Stop if the mouse leaves the document
+document.addEventListener('touchend', stopArrowDownKeyPress);
+document.addEventListener('touchcancel', stopArrowDownKeyPress); 
 
 /**
  * Animate

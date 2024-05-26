@@ -51,6 +51,10 @@ canvas {
     background-color: rgba(255, 255, 255, 0.3);
     color: rgb(40, 40, 40);
     font-size: 30px;
+    margin: 0;
+    padding: 0;
+    padding-inline: 0;
+    cursor: pointer;
 }
 
 .arrow.active {
@@ -69,9 +73,9 @@ canvas {
     color: rgb(40, 40, 40);
     text-align: center;
     line-height: 50px;
-    font-family: Arial, sans-serif;
     font-size: 18px;
     user-select: none;
+    cursor: pointer;
 }
 
 .esc-key-button.active {
