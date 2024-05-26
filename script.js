@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import * as CANNON from 'cannon'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js'
 import GUI from 'lil-gui'
@@ -130,6 +131,53 @@ const headSphere = new THREE.Mesh(new THREE.IcosahedronGeometry(1.7, 0), materia
 // headSpherePositionFolder.add(headSphere.position, 'x', -20, 20).name('X-axis');
 // headSpherePositionFolder.add(headSphere.position, 'y', -20, 20).name('Y-axis');
 
+/// Targets
+const targets = new THREE.Group()
+
+const targetMeshesArray = []
+
+function getRandomColor() {;
+  const letters = '0123456789ABCDEF';
+  let color = '#';
+  for (let i = 0; i < 6; i++) {
+      color += letters[Math.floor(Math.random() * 16)];
+  }
+  return color;
+}
+
+const targetGeometry = new THREE.SphereGeometry(4, 32, 32)
+const numberOfTargets = 10
+
+const createTargetMeshes = () => {
+  for(let i = 0; i < numberOfTargets; i++) {
+
+    const targetMaterial = new THREE.MeshPhysicalMaterial({ emissive: 'black', roughness: 0, metalness: 0.2 })  // { color: '#B6BBC4', emissive: 'black', roughness: 0.5, metalness: 0.5}
+    targetMaterial.transmission = 0
+    targetMaterial.ior = 1.592
+    targetMaterial.thickness = 0.2379
+    const targetColor = getRandomColor()
+    targetMaterial.color = new THREE.Color(targetColor)
+
+    const angle = Math.random() * Math.PI * 2
+    const radius = 60 + Math.random() * 20
+    const x = Math.sin(angle) * radius
+    const z = Math.cos(angle) * radius
+
+    const target = new THREE.Mesh(targetGeometry, targetMaterial)
+    target.position.set(x, 0, z)
+    target.castShadow = true
+    target.scale.set(0.5, 1, 1)
+
+    targetMeshesArray.push(target)
+
+    targets.add(target)
+  }
+}
+createTargetMeshes()
+
+
+scene.add(targets)
+
 // GROUPS
 
 const coreGroup = new THREE.Group();
@@ -161,6 +209,184 @@ const engineGroup = new THREE.Group();
 engineGroup.add(coreGroup, shellGroup);
 
 scene.add(engineGroup);
+
+/**
+ * Physics
+ */
+
+// World
+const world = new CANNON.World({
+  gravity: new CANNON.Vec3(0, 0, 0), // m/s²
+})
+
+// Material
+const defaultMaterial = new CANNON.Material('default')
+
+const defaultContactMaterial = new CANNON.ContactMaterial(
+    defaultMaterial,
+    defaultMaterial,
+    {
+        friction: 0.9,
+        restitution: 0.7
+    }
+)
+world.addContactMaterial(defaultContactMaterial)
+world.defaultContactMaterial = defaultContactMaterial
+
+// Cannon.js Target Body
+
+const targetMeshesAndBodies = []
+const targetBodiesArray = []
+
+const makeTargetBodies = (target) => {
+  const targetShape = new CANNON.Sphere(target.geometry.parameters.radius)
+  const targetBody = new CANNON.Body({
+      mass: 1,
+      position: new CANNON.Vec3(target.position.x, target.position.y, target.position.z),
+      shape: targetShape,
+  })
+  targetBodiesArray.push(targetBody)
+
+  function applyImpulse(body, impulse, contactPoint) {
+      body.applyImpulse(impulse, contactPoint);
+  }
+
+  targetBody.addEventListener('collide', event => {
+      var contact = event.contact;
+      // Get the normal of the contact. Make sure it points away from the surface of the stationary body
+      if (contact.bi.id === targetBody.id) { // bi is body interacting
+        var normal = contact.ni;
+      } else {
+        var normal = contact.ni.scale(-1);
+      }
+
+      // Calculate impulse strength
+      var impulseStrength = normal.scale(10);
+
+      // Apply the impulse to the stationary body at the contact point
+      applyImpulse(event.body, impulseStrength, contact.ri);
+
+      // Stop engine when it collides with target
+      // simulateArrowUpKeyUp()
+      // disableArrowUpKeyDown()
+
+  });
+
+
+  targetBody.position.copy(target.position)
+  targetMeshesAndBodies.push({ mesh: target, body: targetBody })
+
+  world.addBody(targetBody)
+}
+
+targetMeshesArray.forEach(target => {
+  makeTargetBodies(target)
+})
+
+
+// Cannon.js Engine Body
+
+const engineShape = new CANNON.Sphere(molusk.geometry.parameters.radius + 10)
+const engineBody = new CANNON.Body({
+    mass: 1,
+    position: new CANNON.Vec3(engineGroup.position.x, engineGroup.position.y, engineGroup.position.z),
+    shape: engineShape,
+})
+
+engineBody.position.copy(engineGroup.position)
+
+world.addBody(engineBody)
+
+// Border Cylinder
+// Step 1: Create the Trimesh for the Inner Cylinder Boundary
+const innerRadius = 200; // Inner radius of the cylinder
+const height = 250; // Height of the cylinder
+
+// Function to create a Trimesh from a CylinderGeometry
+function createTrimeshFromGeometry(geometry) {
+  const vertices = [];
+  const indices = [];
+
+  // Extract vertices from the geometry
+  for (let i = 0; i < geometry.attributes.position.count; i++) {
+    vertices.push(geometry.attributes.position.array[i * 3]);
+    vertices.push(geometry.attributes.position.array[i * 3 + 1]);
+    vertices.push(geometry.attributes.position.array[i * 3 + 2]);
+  }
+
+  // Extract indices from the geometry
+  for (let i = 0; i < geometry.index.count; i++) {
+    indices.push(geometry.index.array[i]);
+  }
+
+  return new CANNON.Trimesh(vertices, indices);
+}
+
+// Create CylinderGeometry for the inner cylinder
+const cylinderGeometry = new THREE.CylinderGeometry(innerRadius, innerRadius, height, 32, 1, true);
+const trimesh = createTrimeshFromGeometry(cylinderGeometry);
+
+// Create a static body using the Trimesh
+const innerCylinderBody = new CANNON.Body({
+  mass: 0, // Static body
+});
+innerCylinderBody.addShape(trimesh);
+innerCylinderBody.position.set(0, 25, 0); // Position the cylinder
+
+// Rotate the body to align with XZ plane
+const q = new CANNON.Quaternion();
+q.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), Math.PI);
+innerCylinderBody.quaternion.copy(q);
+
+// Step 2: Add the Cylinder to the World
+world.addBody(innerCylinderBody);
+
+// Step 3: Create the Visual Representation in Three.js
+const cylinderMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00, wireframe: false, transparent: true, opacity: 0});
+const cylinderMesh = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
+scene.add(cylinderMesh);
+
+// Sync the Three.js mesh position and rotation with Cannon.js body
+cylinderMesh.position.copy(innerCylinderBody.position);
+cylinderMesh.quaternion.copy(innerCylinderBody.quaternion);
+
+// LIDS
+// Step 3: Create the Plane Shapes for the Lids
+const topPlaneShape = new CANNON.Plane();
+const bottomPlaneShape = new CANNON.Plane();
+
+// Create Bodies for the Lids
+const topPlaneBody = new CANNON.Body({
+  mass: 0, // Static body
+  shape: topPlaneShape,
+  position: new CANNON.Vec3(0, 50, 0)
+});
+topPlaneBody.quaternion.setFromEuler(Math.PI / 2, 0, 0);
+
+const bottomPlaneBody = new CANNON.Body({
+  mass: 0, // Static body
+  shape: bottomPlaneShape,
+  position: new CANNON.Vec3(0, -50, 0)
+});
+bottomPlaneBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+
+// Add the Plane Bodies to the World
+  world.addBody(topPlaneBody);
+  world.addBody(bottomPlaneBody);
+
+// Visual representation for the lids (optional)
+const planeGeometry = new THREE.PlaneGeometry(innerRadius * 2, innerRadius * 2);
+const planeMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff, wireframe: false, opacity: 0, transparent: true});
+
+const topPlaneMesh = new THREE.Mesh(planeGeometry, planeMaterial);
+topPlaneMesh.rotation.x = Math.PI / 2;
+topPlaneMesh.position.set(topPlaneBody.position.x, topPlaneBody.position.y, topPlaneBody.position.z);
+scene.add(topPlaneMesh);
+
+const bottomPlaneMesh = new THREE.Mesh(planeGeometry, planeMaterial);
+bottomPlaneMesh.rotation.x = -Math.PI / 2;
+bottomPlaneMesh.position.set(bottomPlaneBody.position.x, bottomPlaneBody.position.y, bottomPlaneBody.position.z);
+scene.add(bottomPlaneMesh);
 
 // LIGHTS
 
@@ -204,9 +430,9 @@ window.addEventListener('resize', () =>
 
 // Camera
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 1000)
-camera.position.x = 0
-camera.position.y = 0
-camera.position.z = 30
+camera.position.x = -20
+camera.position.y = 15
+camera.position.z = 55
 scene.add(camera)
 
 // Controls
@@ -312,7 +538,7 @@ function updateLeftRotation(time) {
   } else if (progress <= 1) {
       // Second half: rotate back to initial position
       shellGroup.rotation.x = initialXRotation - 2 * rotationStep * (1 - progress);
-      engineGroup.rotation.y += 0.01;    
+      // engineGroup.rotation.y += 0.01;    
   } else {
       // End of animation
       shellGroup.rotation.x = initialXRotation;
@@ -330,7 +556,7 @@ function updateRightRotation(time) {
   } else if (progress <= 1) {
       // Second half: rotate back to initial position
       shellGroup.rotation.x = initialXRotation + 2 * rotationStep * (1 - progress);
-      engineGroup.rotation.y += -0.01;  
+      // engineGroup.rotation.y += -0.01;  
   } else {
       // End of animation
       shellGroup.rotation.x = initialXRotation;
@@ -355,6 +581,39 @@ window.addEventListener('keydown', function(event) {
     downAnimationInProgress = true;
   }
 });
+
+// Function to simulate keyup event
+function simulateArrowUpKeyUp() {
+  const arrowUpEvent = new KeyboardEvent('keyup', {
+      key: 'ArrowUp',
+      code: 'ArrowUp',
+      keyCode: 38, // 38 is the keyCode for the ArrowUp key
+      which: 38,
+      bubbles: true,
+      cancelable: true
+  });
+
+  // Dispatch the event on the desired element or the document
+  document.dispatchEvent(arrowUpEvent);
+}
+
+// Function to disable Arrow Up keydown event
+// function disableArrowUpKeyDown() {
+//   function preventArrowUpKeyDown(event) {
+//       if (event.key === 'ArrowUp') {
+//           event.preventDefault();
+//           event.stopPropagation();
+//       }
+//   }
+
+//   // Add event listener to prevent Arrow Up keydown event
+//   document.addEventListener('keydown', preventArrowUpKeyDown, true);
+
+//   // Remove the event listener after 1 second
+//   setTimeout(() => {
+//       document.removeEventListener('keydown', preventArrowUpKeyDown, true);
+//   }, 1000);
+// }
 
 // Listen for key up to reset the animation flag
 window.addEventListener('keyup', function(event) {
@@ -405,14 +664,13 @@ function animateForward(time) {
     const backward = new THREE.Vector3(-1, 0, 0); // Faces negative x-direction initially
     backward.applyEuler(new THREE.Euler(0, engineGroup.rotation.y, 0, 'XYZ'));
 
-    // engineGroup.position.x -= 0.1 * deltaTime;  // Move at 1 unit per second
     engineGroup.position.add(backward.multiplyScalar(speed));
   }
   if (keyStates['ArrowLeft']) {
-    engineGroup.rotation.y += 0.1;  // Move at 1 unit per second
+    engineGroup.rotation.y += 0.1;  
   }
   if (keyStates['ArrowRight']) {
-    engineGroup.rotation.y -= 0.1;  // Move at 1 unit per second
+    engineGroup.rotation.y -= 0.1;
   }
 
   renderer.render(scene, camera);
@@ -420,12 +678,126 @@ function animateForward(time) {
 requestAnimationFrame(animateForward);
 
 /**
+ * Physics Objects
+ */
+const objectsToUpdate = []
+
+objectsToUpdate.push({ mesh: engineGroup, body: engineBody })
+
+targetMeshesAndBodies.forEach(target => {
+  objectsToUpdate.push({ mesh: target.mesh, body: target.body })
+})
+
+const maxAngularVelocity = 5
+world.addEventListener('postStep', function() {
+  targetBodiesArray.forEach(body => {
+    // Calculate the magnitude of the angular velocity vector
+    const angularSpeed = body.angularVelocity.length();
+    
+    // If the angular speed exceeds the maximum, scale it down
+    if (angularSpeed > maxAngularVelocity) {
+      body.angularVelocity.scale(maxAngularVelocity / angularSpeed, body.angularVelocity);
+    }
+  });
+});
+
+/**
+ * Arrow Keys On Screen
+ */
+// Get the arrow elements
+const arrowUp = document.getElementById('arrow-up');
+const arrowDown = document.getElementById('arrow-down');
+const arrowLeft = document.getElementById('arrow-left');
+const arrowRight = document.getElementById('arrow-right');
+
+// Function to handle arrow keys keydown event
+function handleKeyDown(event) {
+    switch (event.key) {
+        case 'ArrowUp':
+            arrowUp.classList.add('active');
+            break;
+        case 'ArrowDown':
+            arrowDown.classList.add('active');
+            break;
+        case 'ArrowLeft':
+            arrowLeft.classList.add('active');
+            break;
+        case 'ArrowRight':
+            arrowRight.classList.add('active');
+            break;
+    }
+}
+
+// Function to handle arrow keys keyup event
+function handleKeyUp(event) {
+    switch (event.key) {
+        case 'ArrowUp':
+            arrowUp.classList.remove('active');
+            break;
+        case 'ArrowDown':
+            arrowDown.classList.remove('active');
+            break;
+        case 'ArrowLeft':
+            arrowLeft.classList.remove('active');
+            break;
+        case 'ArrowRight':
+            arrowRight.classList.remove('active');
+            break;
+    }
+}
+
+// Add event listeners for keydown and keyup events
+window.addEventListener('keydown', handleKeyDown);
+window.addEventListener('keyup', handleKeyUp);
+
+/**
+ * Reset Button on Screen
+ */
+// Event listener for esc keydown event
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+      const escapeKeyButton = document.getElementById('escape-key');
+      escapeKeyButton.classList.add('active');
+
+      // Bring back the targets to their newly calculated initial positions
+      targetBodiesArray.forEach(body => {
+        const angle = Math.random() * Math.PI * 2
+        const radius = 60 + Math.random() * 20
+        const x = Math.sin(angle) * radius
+        const z = Math.cos(angle) * radius
+    
+        body.position.set(x, 0, z)
+      });
+
+      // Reset the button style after some time
+      setTimeout(() => {
+          escapeKeyButton.classList.remove('active');
+      }, 100);
+  }
+});
+
+/**
  * Animate
  */
 const clock = new THREE.Clock()
+let oldElapsedTime = 0
 
 const tick = () => {
   const elapsedTime = clock.getElapsedTime()
+  const deltaTime = elapsedTime - oldElapsedTime
+  oldElapsedTime = elapsedTime
+
+  world.step(1 / 60, deltaTime, 3)
+
+  for (const object of objectsToUpdate) {
+    if (object.mesh === engineGroup) {
+      object.body.position.copy(object.mesh.position)
+      object.body.quaternion.copy(object.mesh.quaternion)
+    } else {
+      object.mesh.position.copy(object.body.position)
+      object.mesh.quaternion.copy(object.body.quaternion)
+    }
+}
 
   // Update objects
   torusOne.rotation.y = elapsedTime * 2
@@ -437,6 +809,8 @@ const tick = () => {
   torusTwo.rotation.x = elapsedTime * (-2)
   torusThree.rotation.x = elapsedTime * (-0.5)
   headSphere.rotation.x = elapsedTime * (-1)
+
+  camera.position.y = Math.sin(elapsedTime * 0.1) * 20
 
   // Update controls
   controls.update()
@@ -451,3 +825,4 @@ const tick = () => {
 }
 
 tick()
+
