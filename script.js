@@ -142,17 +142,16 @@ function getRandomColor() {;
   for (let i = 0; i < 6; i++) {
       color += letters[Math.floor(Math.random() * 16)];
   }
-  // console.log('color :>> ', color);
   return color;
 }
 
-
-
 const targetGeometry = new THREE.SphereGeometry(4, 32, 32)
 const numberOfTargets = 10
-for(let i = 0; i < numberOfTargets; i++) {
 
-    const targetMaterial = new THREE.MeshPhysicalMaterial({ emissive: 'black', roughness: 0, metalness: 0.5 })  // { color: '#B6BBC4', emissive: 'black', roughness: 0.5, metalness: 0.5}
+const createTargetMeshes = () => {
+  for(let i = 0; i < numberOfTargets; i++) {
+
+    const targetMaterial = new THREE.MeshPhysicalMaterial({ emissive: 'black', roughness: 0, metalness: 0.2 })  // { color: '#B6BBC4', emissive: 'black', roughness: 0.5, metalness: 0.5}
     targetMaterial.transmission = 0
     targetMaterial.ior = 1.592
     targetMaterial.thickness = 0.2379
@@ -172,7 +171,10 @@ for(let i = 0; i < numberOfTargets; i++) {
     targetMeshesArray.push(target)
 
     targets.add(target)
+  }
 }
+createTargetMeshes()
+
 
 scene.add(targets)
 
@@ -231,8 +233,7 @@ const defaultContactMaterial = new CANNON.ContactMaterial(
 world.addContactMaterial(defaultContactMaterial)
 world.defaultContactMaterial = defaultContactMaterial
 
-// Cannon.js target body
-// objectsToUpdate.push({ mesh: target, body: targetBody })
+// Cannon.js Target Body
 
 const targetMeshesAndBodies = []
 const targetBodiesArray = []
@@ -244,7 +245,6 @@ const makeTargetBodies = (target) => {
       position: new CANNON.Vec3(target.position.x, target.position.y, target.position.z),
       shape: targetShape,
   })
-  // targetBody.sleep()
   targetBodiesArray.push(targetBody)
 
   function applyImpulse(body, impulse, contactPoint) {
@@ -261,7 +261,6 @@ const makeTargetBodies = (target) => {
       }
 
       // Calculate impulse strength
-      // var impulseStrength = normal.scale(targetBody.velocity.length() * targetBody.mass * 1000);
       var impulseStrength = normal.scale(10);
 
       // Apply the impulse to the stationary body at the contact point
@@ -284,16 +283,9 @@ targetMeshesArray.forEach(target => {
   makeTargetBodies(target)
 })
 
-// Wake up bodies after some time or event
-// setTimeout(() => {
-//   targetBodiesArray.forEach(body => {
-//     body.wakeUp();
-//   });
-// }, 1000);
 
-// END target body
+// Cannon.js Engine Body
 
-// Cannon.js engine body
 const engineShape = new CANNON.Sphere(molusk.geometry.parameters.radius + 10)
 const engineBody = new CANNON.Body({
     mass: 1,
@@ -304,8 +296,6 @@ const engineBody = new CANNON.Body({
 engineBody.position.copy(engineGroup.position)
 
 world.addBody(engineBody)
-
-// END engine body
 
 // Border Cylinder
 // Step 1: Create the Trimesh for the Inner Cylinder Boundary
@@ -381,10 +371,8 @@ const bottomPlaneBody = new CANNON.Body({
 bottomPlaneBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
 
 // Add the Plane Bodies to the World
-// if (targetMeshesArray.length > 0) {
   world.addBody(topPlaneBody);
   world.addBody(bottomPlaneBody);
-// }
 
 // Visual representation for the lids (optional)
 const planeGeometry = new THREE.PlaneGeometry(innerRadius * 2, innerRadius * 2);
@@ -442,9 +430,9 @@ window.addEventListener('resize', () =>
 
 // Camera
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 1000)
-camera.position.x = 0
-camera.position.y = -20
-camera.position.z = 50
+camera.position.x = -20
+camera.position.y = 15
+camera.position.z = 55
 scene.add(camera)
 
 // Controls
@@ -550,7 +538,7 @@ function updateLeftRotation(time) {
   } else if (progress <= 1) {
       // Second half: rotate back to initial position
       shellGroup.rotation.x = initialXRotation - 2 * rotationStep * (1 - progress);
-      engineGroup.rotation.y += 0.01;    
+      // engineGroup.rotation.y += 0.01;    
   } else {
       // End of animation
       shellGroup.rotation.x = initialXRotation;
@@ -568,7 +556,7 @@ function updateRightRotation(time) {
   } else if (progress <= 1) {
       // Second half: rotate back to initial position
       shellGroup.rotation.x = initialXRotation + 2 * rotationStep * (1 - progress);
-      engineGroup.rotation.y += -0.01;  
+      // engineGroup.rotation.y += -0.01;  
   } else {
       // End of animation
       shellGroup.rotation.x = initialXRotation;
@@ -676,14 +664,13 @@ function animateForward(time) {
     const backward = new THREE.Vector3(-1, 0, 0); // Faces negative x-direction initially
     backward.applyEuler(new THREE.Euler(0, engineGroup.rotation.y, 0, 'XYZ'));
 
-    // engineGroup.position.x -= 0.1 * deltaTime;  // Move at 1 unit per second
     engineGroup.position.add(backward.multiplyScalar(speed));
   }
   if (keyStates['ArrowLeft']) {
-    engineGroup.rotation.y += 0.1;  // Move at 1 unit per second
+    engineGroup.rotation.y += 0.1;  
   }
   if (keyStates['ArrowRight']) {
-    engineGroup.rotation.y -= 0.1;  // Move at 1 unit per second
+    engineGroup.rotation.y -= 0.1;
   }
 
   renderer.render(scene, camera);
@@ -714,6 +701,80 @@ world.addEventListener('postStep', function() {
   });
 });
 
+/**
+ * Arrow Keys On Screen
+ */
+// Get the arrow elements
+const arrowUp = document.getElementById('arrow-up');
+const arrowDown = document.getElementById('arrow-down');
+const arrowLeft = document.getElementById('arrow-left');
+const arrowRight = document.getElementById('arrow-right');
+
+// Function to handle arrow keys keydown event
+function handleKeyDown(event) {
+    switch (event.key) {
+        case 'ArrowUp':
+            arrowUp.classList.add('active');
+            break;
+        case 'ArrowDown':
+            arrowDown.classList.add('active');
+            break;
+        case 'ArrowLeft':
+            arrowLeft.classList.add('active');
+            break;
+        case 'ArrowRight':
+            arrowRight.classList.add('active');
+            break;
+    }
+}
+
+// Function to handle arrow keys keyup event
+function handleKeyUp(event) {
+    switch (event.key) {
+        case 'ArrowUp':
+            arrowUp.classList.remove('active');
+            break;
+        case 'ArrowDown':
+            arrowDown.classList.remove('active');
+            break;
+        case 'ArrowLeft':
+            arrowLeft.classList.remove('active');
+            break;
+        case 'ArrowRight':
+            arrowRight.classList.remove('active');
+            break;
+    }
+}
+
+// Add event listeners for keydown and keyup events
+window.addEventListener('keydown', handleKeyDown);
+window.addEventListener('keyup', handleKeyUp);
+
+/**
+ * Reset Button on Screen
+ */
+// Event listener for esc keydown event
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+      const escapeKeyButton = document.getElementById('escape-key');
+      escapeKeyButton.classList.add('active');
+
+      // Bring back the targets to their newly calculated initial positions
+      targetBodiesArray.forEach(body => {
+        const angle = Math.random() * Math.PI * 2
+        const radius = 60 + Math.random() * 20
+        const x = Math.sin(angle) * radius
+        const z = Math.cos(angle) * radius
+    
+        body.position.set(x, 0, z)
+      });
+
+      // Reset the button style after some time
+      setTimeout(() => {
+          escapeKeyButton.classList.remove('active');
+      }, 100);
+  }
+});
 
 /**
  * Animate
@@ -725,7 +786,6 @@ const tick = () => {
   const elapsedTime = clock.getElapsedTime()
   const deltaTime = elapsedTime - oldElapsedTime
   oldElapsedTime = elapsedTime
-
 
   world.step(1 / 60, deltaTime, 3)
 
@@ -749,6 +809,8 @@ const tick = () => {
   torusTwo.rotation.x = elapsedTime * (-2)
   torusThree.rotation.x = elapsedTime * (-0.5)
   headSphere.rotation.x = elapsedTime * (-1)
+
+  camera.position.y = Math.sin(elapsedTime * 0.1) * 20
 
   // Update controls
   controls.update()
