@@ -253,6 +253,7 @@ const makeTargetBodies = (target) => {
 
   targetBody.addEventListener('collide', event => {
       var contact = event.contact;
+      console.log('contact :>> ', contact);
       // Get the normal of the contact. Make sure it points away from the surface of the stationary body
       if (contact.bi.id === targetBody.id) { // bi is body interacting
         var normal = contact.ni;
@@ -443,8 +444,8 @@ window.addEventListener('resize', () =>
 // Camera
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 1000)
 camera.position.x = 0
-camera.position.y = 0
-camera.position.z = 30
+camera.position.y = -20
+camera.position.z = 50
 scene.add(camera)
 
 // Controls
