@@ -253,7 +253,6 @@ const makeTargetBodies = (target) => {
 
   targetBody.addEventListener('collide', event => {
       var contact = event.contact;
-      console.log('contact :>> ', contact);
       // Get the normal of the contact. Make sure it points away from the surface of the stationary body
       if (contact.bi.id === targetBody.id) { // bi is body interacting
         var normal = contact.ni;
