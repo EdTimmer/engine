@@ -5,16 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Engine</title>
     <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
 </head>
 <body>
-    <div class="esc-key-button" id="escape-key">ESC</div>
+    <button class="esc-key-button" id="escape-key" aria-label="Escape button" title="Reset targets">ESC</button>
     <div class="arrowsTop">
-        <div class="arrow" id="arrow-up">↑</div>
+        <button class="arrow" id="arrow-up" aria-label="Up arrow" title="Move forward">
+            <i class="material-icons icon">arrow_upward</i>
+        </button>
     </div>
     <div class="arrowsBottom">
-        <div class="arrow" id="arrow-left">←</div>
-        <div class="arrow" id="arrow-down">↓</div>
-        <div class="arrow" id="arrow-right">→</div>
+        <button class="arrow" id="arrow-left" aria-label="Left arrow" title="Turn left">
+            <i class="material-icons icon">arrow_back</i>
+        </button>
+
+        <button class="arrow" id="arrow-down" aria-label="Down arrow" title="Move backward">
+            <i class="material-icons icon">arrow_downward</i>
+        </button>
+
+        <button class="arrow" id="arrow-right" aria-label="Right arrow" title="Turn right">
+            <i class="material-icons icon">arrow_forward</i>
+        </button>
     </div>
     <canvas class="webgl"></canvas>
     <script type="module" src="./script.js"></script>
