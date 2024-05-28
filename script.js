@@ -10,8 +10,13 @@ import GUI from 'lil-gui'
 
 const canvas = document.querySelector('canvas.webgl')
 
-const scene = new THREE.Scene()
+// LOADING SCREEN FOR HALF A SECOND
+const loadingScreen = document.getElementById('loading-screen')
+setTimeout(() => {
+  loadingScreen.style.display = 'none'
+}, 500)
 
+const scene = new THREE.Scene()
 
 // Objects
 const materialSphere = new THREE.MeshPhysicalMaterial({ color: '#ff4d00', emissive: 'black', roughness: 0, metalness: 0 })  // { color: '#B6BBC4', emissive: 'black', roughness: 0.5, metalness: 0.5}
@@ -146,7 +151,7 @@ function getRandomColor() {;
 }
 
 const targetGeometry = new THREE.SphereGeometry(4, 32, 32)
-const numberOfTargets = 10
+const numberOfTargets = 12
 
 const createTargetMeshes = () => {
   for(let i = 0; i < numberOfTargets; i++) {
@@ -297,6 +302,10 @@ engineBody.position.copy(engineGroup.position)
 
 world.addBody(engineBody)
 
+// Control of Wireframes and Opacity
+const isWireframe = false;
+const globalOpacity = 0;
+
 // Border Cylinder
 // Step 1: Create the Trimesh for the Inner Cylinder Boundary
 const innerRadius = 200; // Inner radius of the cylinder
@@ -342,7 +351,7 @@ innerCylinderBody.quaternion.copy(q);
 world.addBody(innerCylinderBody);
 
 // Step 3: Create the Visual Representation in Three.js
-const cylinderMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00, wireframe: false, transparent: true, opacity: 0});
+const cylinderMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00, wireframe: isWireframe, transparent: true, opacity: globalOpacity});
 const cylinderMesh = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
 scene.add(cylinderMesh);
 
@@ -376,7 +385,7 @@ bottomPlaneBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
 
 // Visual representation for the lids (optional)
 const planeGeometry = new THREE.PlaneGeometry(innerRadius * 2, innerRadius * 2);
-const planeMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff, wireframe: false, opacity: 0, transparent: true});
+const planeMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff, wireframe: isWireframe, opacity: globalOpacity, transparent: true});
 
 const topPlaneMesh = new THREE.Mesh(planeGeometry, planeMaterial);
 topPlaneMesh.rotation.x = Math.PI / 2;
@@ -387,6 +396,36 @@ const bottomPlaneMesh = new THREE.Mesh(planeGeometry, planeMaterial);
 bottomPlaneMesh.rotation.x = -Math.PI / 2;
 bottomPlaneMesh.position.set(bottomPlaneBody.position.x, bottomPlaneBody.position.y, bottomPlaneBody.position.z);
 scene.add(bottomPlaneMesh);
+
+// OBSTACLE
+
+const obstacleRadiusTop = 30;
+const obstacleRadiusBottom = 30;
+const obstacleHeight = 100;
+const obstacleNumSegments = 32;
+
+const obstacleGeometry = new THREE.CylinderGeometry(obstacleRadiusTop, obstacleRadiusBottom, obstacleHeight, obstacleNumSegments);
+const obstacleMaterial = new THREE.MeshStandardMaterial({wireframe: isWireframe, opacity: globalOpacity, transparent: true});
+const obstacle = new THREE.Mesh(obstacleGeometry, obstacleMaterial);
+obstacle.position.set(180, 0, 0);
+// obstacle.rotation.x = Math.PI / 2; // Rotate to align with the original box orientation
+scene.add(obstacle);
+
+// Create the CANNON.js cylinder shape
+const obstacleShape = new CANNON.Cylinder(obstacleRadiusTop,  obstacleRadiusBottom, obstacleHeight, obstacleNumSegments);
+const obstacleBody = new CANNON.Body({
+    mass: 0,
+    position: new CANNON.Vec3(obstacle.position.x, obstacle.position.y, obstacle.position.z),
+    shape: obstacleShape,
+});
+
+// Rotate the cylinder body to align with the Three.js mesh
+const quat = new CANNON.Quaternion();
+// quat.setFromEuler(Math.PI / 2, 0, 0, 'XYZ'); // Rotate around the X-axis
+obstacleBody.quaternion.copy(quat);
+
+obstacleBody.position.copy(obstacle.position);
+world.addBody(obstacleBody);
 
 // LIGHTS
 
@@ -430,9 +469,6 @@ window.addEventListener('resize', () =>
 
 // Camera
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 1000)
-camera.position.x = -20
-camera.position.y = 15
-camera.position.z = 55
 scene.add(camera)
 
 // Controls
@@ -618,7 +654,7 @@ function animateForward(time) {
   // Handle continuous movement based on key states
   if (keyStates['ArrowUp']) {
 
-    const speed = 1;
+    const speed = 2;
 
     const forward = new THREE.Vector3(-1, 0, 0); // Faces negative x-direction initially
     forward.applyEuler(new THREE.Euler(0, engineGroup.rotation.y, 0, 'XYZ'));
@@ -626,7 +662,7 @@ function animateForward(time) {
     engineGroup.position.add(forward.multiplyScalar(-speed));
   }
   if (keyStates['ArrowDown']) {
-    const speed = 1;
+    const speed = 2;
 
     const backward = new THREE.Vector3(-1, 0, 0); // Faces negative x-direction initially
     backward.applyEuler(new THREE.Euler(0, engineGroup.rotation.y, 0, 'XYZ'));
@@ -654,6 +690,8 @@ objectsToUpdate.push({ mesh: engineGroup, body: engineBody })
 targetMeshesAndBodies.forEach(target => {
   objectsToUpdate.push({ mesh: target.mesh, body: target.body })
 })
+
+objectsToUpdate.push({ mesh: obstacle, body: obstacleBody })
 
 const maxAngularVelocity = 5
 world.addEventListener('postStep', function() {
@@ -734,6 +772,13 @@ document.addEventListener('keydown', function(event) {
         const z = Math.cos(angle) * radius
     
         body.position.set(x, 0, z)
+        body.velocity.set(0, 0, 0);
+        body.angularVelocity.set(0, 0, 0);
+        
+        // Set the rotation using a quaternion
+        const quat = new CANNON.Quaternion();
+        quat.setFromEuler(Math.PI, Math.PI, 0);
+        body.quaternion.copy(quat);
       });
 
       // Reset the button style after some time
@@ -958,6 +1003,48 @@ document.addEventListener('touchcancel', stopArrowDownKeyPress);
 const clock = new THREE.Clock()
 let oldElapsedTime = 0
 
+// Variables for circular motion of the obstacle
+const obstacleRotationRadius = 190;
+
+// INTRO CAMERA MOVEMENT
+
+// Define the starting and target positions
+const startPosition = new THREE.Vector3(0, -200, 0);
+const targetPosition = new THREE.Vector3(0, 0, 60);
+camera.position.copy(startPosition);
+
+// Define the duration of the movement in seconds
+const introDuration = 5; // move over 5 seconds
+
+const initialCameraMovement = () => {
+  const elapsedTime = clock.getElapsedTime()
+  const deltaTime = elapsedTime - oldElapsedTime
+  oldElapsedTime = elapsedTime
+
+  // Calculate the interpolation factor (between 0 and 1)
+  const t = Math.min(elapsedTime / introDuration, 1);
+
+  // Interpolate between the start and target positions
+  camera.position.lerpVectors(startPosition, targetPosition, t);
+
+  // Update controls
+  controls.update()
+
+  // Render
+  renderer.render(scene, camera)
+
+  // Call tick again on the next frame
+  if (elapsedTime < 5) {
+    window.requestAnimationFrame(initialCameraMovement)
+  }
+}
+
+const sceneIsReady = scene.children.length = 9;
+
+if (sceneIsReady) {
+  initialCameraMovement()
+}
+
 const tick = () => {
   const elapsedTime = clock.getElapsedTime()
   const deltaTime = elapsedTime - oldElapsedTime
@@ -986,7 +1073,15 @@ const tick = () => {
   torusThree.rotation.x = elapsedTime * (-0.5)
   headSphere.rotation.x = elapsedTime * (-1)
 
-  camera.position.y = Math.sin(elapsedTime * 0.1) * 20
+  obstacleBody.position.x = obstacleRotationRadius * Math.cos(elapsedTime * 2);
+  obstacleBody.position.y = 0; // Keep it on the horizontal plane
+  obstacleBody.position.z = obstacleRotationRadius * Math.sin(elapsedTime * 2);
+
+  let newElapsedTime = elapsedTime - 5;
+
+  if (elapsedTime >= 5) {
+    camera.position.y = Math.sin(newElapsedTime * 0.1) * 20
+  }
 
   // Update controls
   controls.update()
@@ -1000,5 +1095,6 @@ const tick = () => {
   window.requestAnimationFrame(tick)
 }
 
-tick()
-
+if (sceneIsReady) {
+  tick()
+}
