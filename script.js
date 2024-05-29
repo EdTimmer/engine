@@ -14,7 +14,7 @@ const canvas = document.querySelector('canvas.webgl')
 const loadingScreen = document.getElementById('loading-screen')
 setTimeout(() => {
   loadingScreen.style.display = 'none'
-}, 500)
+}, 1000)
 
 const scene = new THREE.Scene()
 
@@ -151,7 +151,7 @@ function getRandomColor() {;
 }
 
 const targetGeometry = new THREE.SphereGeometry(4, 32, 32)
-const numberOfTargets = 12
+const numberOfTargets = 3
 
 const createTargetMeshes = () => {
   for(let i = 0; i < numberOfTargets; i++) {
@@ -179,7 +179,6 @@ const createTargetMeshes = () => {
   }
 }
 createTargetMeshes()
-
 
 scene.add(targets)
 
@@ -242,6 +241,7 @@ world.defaultContactMaterial = defaultContactMaterial
 
 const targetMeshesAndBodies = []
 const targetBodiesArray = []
+let lastCollisionTime = 0
 
 const makeTargetBodies = (target) => {
   const targetShape = new CANNON.Sphere(target.geometry.parameters.radius)
@@ -257,24 +257,44 @@ const makeTargetBodies = (target) => {
   }
 
   targetBody.addEventListener('collide', event => {
-      var contact = event.contact;
+      const otherBody = event.body;
+      const contact = event.contact;
+      let normal = null;
+      // console.log('event :>> ', event);
+      let currentCollisionTime = null;
+
+      if (otherBody.id === engineBody.id) {
+        // console.log('inside cloneBody condition in the target');
+
+        currentCollisionTime = new Date()
+        if (currentCollisionTime - lastCollisionTime < 100) {
+          console.log('inside PREVENT in the target');
+          return; // Exit if less than 1 second has passed
+        }
+        lastCollisionTime = currentCollisionTime;
+      }
+
+
+
       // Get the normal of the contact. Make sure it points away from the surface of the stationary body
       if (contact.bi.id === targetBody.id) { // bi is body interacting
-        var normal = contact.ni;
+        normal = contact.ni;
+        // console.log('event :>> ', event);
       } else {
-        var normal = contact.ni.scale(-1);
+        normal = contact.ni.scale(-1);
       }
 
       // Calculate impulse strength
-      var impulseStrength = normal.scale(10);
+      const impulseStrength = normal.scale(10);
 
       // Apply the impulse to the stationary body at the contact point
       applyImpulse(event.body, impulseStrength, contact.ri);
 
-      // Stop engine when it collides with target
-      // simulateArrowUpKeyUp()
-      // disableArrowUpKeyDown()
-
+      if (otherBody.id === engineBody.id) {
+        const clone = makeClone(target, event.body, impulseStrength, contact.ri)
+        targetMeshesAndBodies.push(clone)
+        objectsToUpdate.push(clone)
+      }
   });
 
 
@@ -287,6 +307,105 @@ const makeTargetBodies = (target) => {
 targetMeshesArray.forEach(target => {
   makeTargetBodies(target)
 })
+
+// MAKE CLONE TARGET
+const makeClone = (target, eventBody, givenImpulseStrength, contactRi) => {
+  console.log('makeClone fired');
+  function applyImpulse(body, impulse, contactPoint) {
+    console.log('impulse :>> ', impulse);
+    body.applyImpulse(impulse, contactPoint);
+  }
+  // const clonePosition = {
+  //   x: engineGroup.position.x + 3,
+  //   y: engineGroup.position.y + 3,
+  //   z: engineGroup.position.z
+  // }
+
+  const clonePosition = {
+    x: target.position.x,
+    y: target.position.y,
+    z: target.position.z
+  }
+  const makeCloneMesh = (target) => {
+    const cloneMaterial = new THREE.MeshPhysicalMaterial({ emissive: 'black', roughness: 0, metalness: 0.2 })
+    cloneMaterial.transmission = 0
+    cloneMaterial.ior = 1.592
+    cloneMaterial.thickness = 0.2379
+    const cloneColor = getRandomColor()
+    cloneMaterial.color = new THREE.Color(cloneColor)
+
+    const clone = new THREE.Mesh(targetGeometry, cloneMaterial)
+    clone.position.set(clonePosition.x, clonePosition.y, clonePosition.z)
+    clone.castShadow = true
+    clone.scale.set(0.5, 1, 1)
+
+    scene.add(clone)
+
+    return clone
+  }
+
+  const cloneMesh = makeCloneMesh(target)
+
+  const makeCloneBody = (target) => {
+    const cloneShape = new CANNON.Sphere(target.geometry.parameters.radius)
+    const cloneBody = new CANNON.Body({
+        mass: 1,
+        position: new CANNON.Vec3(clonePosition.x, clonePosition.y, clonePosition.z),
+        shape: cloneShape,
+    })
+    
+    cloneBody.addEventListener('collide', event => {
+        const otherBody = event.body;
+        const contact = event.contact;
+        let normal = null;
+
+        let currentCollisionTime = null;
+
+        if (otherBody.id === engineBody.id) {
+          // console.log('inside cloneBody condition in the clone');
+          currentCollisionTime = new Date()
+          if (currentCollisionTime - lastCollisionTime < 100) {
+            console.log('inside PREVENT in the clone');
+            return; // Exit if less than 1 second has passed
+          }
+          lastCollisionTime = currentCollisionTime;
+        }
+
+        // Get the normal of the contact. Make sure it points away from the surface of the stationary body
+        if (contact.bi.id === cloneBody.id) { // bi is body interacting
+          normal = contact.ni;
+
+        } else {
+          normal = contact.ni.scale(-1);
+        }
+  
+        // Calculate impulse strength
+        const impulseStrength = normal.scale(10);
+  
+        // Apply the impulse to the stationary body at the contact point
+        // console.log('event.body :>> ', event.body);
+        // console.log('impulseStrength :>> ', impulseStrength);
+        // console.log('contact.ri :>> ', contact.ri);
+        applyImpulse(eventBody, givenImpulseStrength, contactRi);
+
+        if (otherBody.id === engineBody.id) {
+          const clone = makeClone(target, event.body, impulseStrength, contact.ri)
+          targetMeshesAndBodies.push(clone)
+          objectsToUpdate.push(clone)
+        }
+    });
+
+    targetBodiesArray.push(cloneBody)
+    world.addBody(cloneBody)
+
+    return cloneBody
+  }
+
+  const clonePhysicsBody = makeCloneBody(target)
+
+  const newClone = { mesh: cloneMesh, body: clonePhysicsBody }
+  return newClone
+}
 
 
 // Cannon.js Engine Body
@@ -308,7 +427,7 @@ const globalOpacity = 0;
 
 // Border Cylinder
 // Step 1: Create the Trimesh for the Inner Cylinder Boundary
-const innerRadius = 200; // Inner radius of the cylinder
+const innerRadius = 400; // Inner radius of the cylinder
 const height = 250; // Height of the cylinder
 
 // Function to create a Trimesh from a CylinderGeometry
@@ -399,8 +518,8 @@ scene.add(bottomPlaneMesh);
 
 // OBSTACLE
 
-const obstacleRadiusTop = 30;
-const obstacleRadiusBottom = 30;
+const obstacleRadiusTop = 20;
+const obstacleRadiusBottom = 20;
 const obstacleHeight = 100;
 const obstacleNumSegments = 32;
 
@@ -686,7 +805,7 @@ requestAnimationFrame(animateForward);
 const objectsToUpdate = []
 
 objectsToUpdate.push({ mesh: engineGroup, body: engineBody })
-
+// console.log('targetMeshesAndBodies before collision:>> ', targetMeshesAndBodies);
 targetMeshesAndBodies.forEach(target => {
   objectsToUpdate.push({ mesh: target.mesh, body: target.body })
 })
@@ -1004,7 +1123,7 @@ const clock = new THREE.Clock()
 let oldElapsedTime = 0
 
 // Variables for circular motion of the obstacle
-const obstacleRotationRadius = 190;
+const obstacleRotationRadius = innerRadius - 20;
 
 // INTRO CAMERA MOVEMENT
 
@@ -1051,7 +1170,7 @@ const tick = () => {
   oldElapsedTime = elapsedTime
 
   world.step(1 / 60, deltaTime, 3)
-
+  console.log('objectsToUpdate.length :>> ', objectsToUpdate.length);
   for (const object of objectsToUpdate) {
     if (object.mesh === engineGroup) {
       object.body.position.copy(object.mesh.position)
