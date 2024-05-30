@@ -354,8 +354,57 @@ const makeClone = (target, eventBody, givenImpulseStrength, contactRi) => {
         shape: cloneShape,
     })
     
-    cloneBody.addEventListener('collide', event => {
-        const otherBody = event.body;
+    // cloneBody.addEventListener('collide', event => {
+    //     const otherBody = event.body;
+    //     const contact = event.contact;
+    //     let normal = null;
+
+    //     let currentCollisionTime = null;
+
+    //     if (otherBody.id === engineBody.id) {
+    //       // console.log('inside cloneBody condition in the clone');
+    //       currentCollisionTime = new Date()
+    //       if (currentCollisionTime - lastCollisionTime < 100) {
+    //         console.log('inside PREVENT in the clone');
+    //         return; // Exit if less than 1 second has passed
+    //       }
+    //       lastCollisionTime = currentCollisionTime;
+    //     }
+
+    //     // Get the normal of the contact. Make sure it points away from the surface of the stationary body
+    //     if (contact.bi.id === cloneBody.id) { // bi is body interacting
+    //       normal = contact.ni;
+
+    //     } else {
+    //       normal = contact.ni.scale(-1);
+    //     }
+  
+    //     // Calculate impulse strength
+    //     const impulseStrength = normal.scale(10);
+  
+    //     // Apply the impulse to the stationary body at the contact point
+    //     // console.log('event.body :>> ', event.body);
+    //     // console.log('impulseStrength :>> ', impulseStrength);
+    //     // console.log('contact.ri :>> ', contact.ri);
+    //     applyImpulse(eventBody, givenImpulseStrength, contactRi);
+
+    //     if (otherBody.id === engineBody.id) {
+    //       const clone = makeClone(target, event.body, impulseStrength, contact.ri)
+    //       targetMeshesAndBodies.push(clone)
+    //       objectsToUpdate.push(clone)
+    //     }
+    // });
+
+    targetBodiesArray.push(cloneBody)
+    world.addBody(cloneBody)
+
+    return cloneBody
+  }
+
+  const clonePhysicsBody = makeCloneBody(target)
+
+  clonePhysicsBody.addEventListener('collide', event => {
+    const otherBody = event.body;
         const contact = event.contact;
         let normal = null;
 
@@ -372,7 +421,7 @@ const makeClone = (target, eventBody, givenImpulseStrength, contactRi) => {
         }
 
         // Get the normal of the contact. Make sure it points away from the surface of the stationary body
-        if (contact.bi.id === cloneBody.id) { // bi is body interacting
+        if (contact.bi.id === clonePhysicsBody.id) { // bi is body interacting
           normal = contact.ni;
 
         } else {
@@ -389,19 +438,12 @@ const makeClone = (target, eventBody, givenImpulseStrength, contactRi) => {
         applyImpulse(eventBody, givenImpulseStrength, contactRi);
 
         if (otherBody.id === engineBody.id) {
-          const clone = makeClone(target, event.body, impulseStrength, contact.ri)
+          const clone = makeClone(cloneMesh, event.body, impulseStrength, contact.ri)
           targetMeshesAndBodies.push(clone)
           objectsToUpdate.push(clone)
         }
     });
-
-    targetBodiesArray.push(cloneBody)
-    world.addBody(cloneBody)
-
-    return cloneBody
-  }
-
-  const clonePhysicsBody = makeCloneBody(target)
+  
 
   const newClone = { mesh: cloneMesh, body: clonePhysicsBody }
   return newClone
