@@ -3,6 +3,8 @@ import * as CANNON from 'cannon'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js'
 import GUI from 'lil-gui'
+import { int } from 'three/examples/jsm/nodes/Nodes.js'
+import { clone } from 'three/examples/jsm/utils/SkeletonUtils.js'
 
 // GUI
 // const gui = new GUI()
@@ -18,11 +20,12 @@ setTimeout(() => {
 
 const scene = new THREE.Scene()
 
-const numberOfTargets = 3
-const maxClonesNumber = 20
+const numberOfTargets = 6
+const numberOfCoins = 5
+const maxClonesNumber = 40
 const clonesOnHit = 3
 let isEndOfGame = false
-const separationDistance = 40
+const separationDistance = 60
 // let isTornado = false
 
 
@@ -172,6 +175,8 @@ function getRandomBlackOrWhite() {
 }
 
 
+const targetTorusGeometry = new THREE.TorusGeometry(4, 2, 16, 100)
+const targetSphereGeometry = new THREE.SphereGeometry(4, 32, 32)
 const targetGeometry = new THREE.SphereGeometry(4, 32, 32)
 
 const createTargetMeshes = () => {
@@ -183,20 +188,43 @@ const createTargetMeshes = () => {
     targetMaterial.transmission = 0
     targetMaterial.ior = 1.592
     targetMaterial.thickness = 0.2379
-    const targetColor = getRandomColor()
+    // const targetColor = getRandomColor()
+    const targetColor = 'white'
     targetMaterial.color = new THREE.Color(targetColor)
+    targetMaterial.metalness = 0.8
+    targetMaterial.roughness = 0
+    // targetMaterial.color = new THREE.Color(targetColor)
 
     // const angle = Math.random() * Math.PI * 2
     // const radius = 60 + Math.random() * 20
     // const x = Math.sin(angle) * radius
     // const z = Math.cos(angle) * radius
 
-    const target = new THREE.Mesh(targetGeometry, targetMaterial)
+    const target = new THREE.Mesh(targetSphereGeometry, targetMaterial)
     // target.position.set(x, 0, z)
 
-    target.position.set((i + 1) * separationDistance, 0, 0)
+    // for (let i = 0; i < numberOfTargets; i++) {
+      // const target = targetObjects[i]
+      // console.log('target.mesh.position :>> ', target.mesh.position);
+    if (i === 0) {
+      target.position.set(separationDistance, 0, -separationDistance)
+    } else if (i === 1) {
+      target.position.set(separationDistance * 2, 0, 0)
+    } else if (i === 2) {
+      target.position.set(separationDistance, 0, separationDistance)
+    } else if (i === 3) {
+      target.position.set(separationDistance, 0, -(separationDistance + (separationDistance / 2)))
+    } else if (i === 4) {
+      target.position.set((separationDistance * 2) + (separationDistance / 2), 0, 0)
+    } else if (i === 5) {
+      target.position.set(separationDistance, 0, separationDistance + (separationDistance / 2))
+    }
+
+    // }
+
+    // target.position.set((i + 1) * separationDistance, 0, 0)
     // target.castShadow = true
-    target.scale.set(0.5, 1, 1)
+    target.scale.set(1, 1, 1)
 
     targetMeshesArray.push(target)
     scene.add(target)
@@ -320,7 +348,10 @@ const makeTargetBodies = (target) => {
 
       if (otherBody.id === engineBody.id && !isEndOfGame) { // && allowCloning
         for (let i = 0; i < clonesOnHit; i++) {
-          makeClone(target, event.body, impulseStrength, contact.ri)
+          if (cloneObjects.length < maxClonesNumber) {
+            makeClone(target, event.body, impulseStrength, contact.ri)
+          }
+          // makeClone(target, event.body, impulseStrength, contact.ri)
           // clonesArray.push(clone)
           // targetMeshesAndBodies.push(clone)
           // objectsToUpdate.push(clone)
@@ -349,6 +380,7 @@ if (targetMeshesArray.length === 0 && !isEndOfGame) {
 }
 // MAKE CLONE TARGET
 let cloneObjects = []
+let coinObjects = []
 
 const makeClone = (target, eventBody, givenImpulseStrength, contactRi) => {
   const getRandomNumber = (min, max) => {
@@ -365,7 +397,7 @@ const makeClone = (target, eventBody, givenImpulseStrength, contactRi) => {
     y: target.position.y + getRandomNumber(minNumber, maxNumber),
     z: target.position.z + getRandomNumber(minNumber, maxNumber),
   }
-  const makeCloneMesh = (target) => {
+  const makeCloneMesh = () => {
     const cloneMaterial = new THREE.MeshPhysicalMaterial({ emissive: 'black', roughness: 0, metalness: 0.2 })
     cloneMaterial.transmission = 0
     cloneMaterial.ior = 1.592
@@ -433,14 +465,11 @@ const makeClone = (target, eventBody, givenImpulseStrength, contactRi) => {
 
         applyImpulse(eventBody, givenImpulseStrength, contactRi);
 
-        if (otherBody.id === engineBody.id && !isEndOfGame) { // && allowCloning
-          for (let i = 0; i < clonesOnHit; i++) {
-            makeClone(cloneMesh, event.body, impulseStrength, contact.ri)
-            // clonesArray.push(clone)
-            // targetMeshesAndBodies.push(clone)
-            // objectsToUpdate.push(clone)
-          }
-        }
+        // if (otherBody.id === engineBody.id && !isEndOfGame) { // && allowCloning
+        //   for (let i = 0; i < clonesOnHit; i++) {
+        //     makeClone(cloneMesh, event.body, impulseStrength, contact.ri)
+        //   }
+        // }
     });
   
 
@@ -450,6 +479,99 @@ const makeClone = (target, eventBody, givenImpulseStrength, contactRi) => {
   return newClone
 }
 
+const makeCoin = (clone) => {
+  const getRandomNumber = (min, max) => {
+    return Math.random() * (max - min) + min;
+  }
+
+  const minNumber = -3;
+  const maxNumber = 3;
+  const coinPosition = {
+    x: clone.position.x + getRandomNumber(minNumber, maxNumber),
+    y: clone.position.y + getRandomNumber(minNumber, maxNumber),
+    z: clone.position.z + getRandomNumber(minNumber, maxNumber),
+  }
+  const makeCoinMesh = () => {
+    const coinMaterial = new THREE.MeshPhysicalMaterial({ emissive: 'black', roughness: 0, metalness: 0.2 })
+    coinMaterial.transmission = 0
+    coinMaterial.ior = 1.592
+    coinMaterial.thickness = 0.2379
+    coinMaterial.metalness = 0.8
+    coinMaterial.color = new THREE.Color('gold')
+
+    const coin = new THREE.Mesh(targetGeometry, coinMaterial)
+    coin.position.set(coinPosition.x, coinPosition.y, coinPosition.z)
+    // coin.castShadow = true
+    coin.scale.set(1, 1, 1)
+
+    // coinsArray.push(coin)
+
+    scene.add(coin)
+
+    return coin
+  }
+
+  const coinMesh = makeCoinMesh(clone)
+
+  const makeCoinBody = (coin) => {
+    const coinShape = new CANNON.Sphere(coin.geometry.parameters.radius)
+    const coinBody = new CANNON.Body({
+        mass: 1,
+        position: new CANNON.Vec3(coinPosition.x, coinPosition.y, coinPosition.z),
+        shape: coinShape,
+    })
+    
+    // coinBodiesArray.push(coinBody)
+    world.addBody(coinBody)
+
+    return coinBody
+  }
+
+  const coinPhysicsBody = makeCoinBody(clone)
+
+  // coinPhysicsBody.addEventListener('collide', event => {
+  //   const otherBody = event.body;
+  //       const contact = event.contact;
+  //       let normal = null;
+
+  //       let currentCollisionTime = null;
+
+  //       if (otherBody.id === engineBody.id) {
+  //         currentCollisionTime = new Date()
+  //         if (currentCollisionTime - lastCollisionTime < 100) {
+  //           return; // Exit if less than 1 second has passed
+  //         }
+  //         lastCollisionTime = currentCollisionTime;
+  //       }
+
+  //       // Get the normal of the contact. Make sure it points away from the surface of the stationary body
+  //       if (contact.bi.id === coinPhysicsBody.id) { // bi is body interacting
+  //         normal = contact.ni;
+
+  //       } else {
+  //         normal = contact.ni.scale(-1);
+  //       }
+  
+  //       // Calculate impulse strength
+  //       const impulseStrength = normal.scale(10);
+  
+  //       // Apply the impulse to the stationary body at the contact point
+
+  //       applyImpulse(eventBody, givenImpulseStrength, contactRi);
+
+  //       // if (otherBody.id === engineBody.id && !isEndOfGame) { // && allowCloning
+  //       //   for (let i = 0; i < clonesOnHit; i++) {
+  //       //     makeClone(coinMesh, event.body, impulseStrength, contact.ri)
+  //       //   }
+  //       // }
+  //   });
+  
+
+  const newCoin = { mesh: coinMesh, body: coinPhysicsBody }
+  coinObjects.push(newCoin)
+  // objectsToUpdate.push(newCoin)
+  return newCoin
+}
 
 // Cannon.js Engine Body
 
@@ -764,7 +886,7 @@ function updateRightRotation(time) {
 
 // Listen for the up arrow key
 window.addEventListener('keydown', function(event) {
-  if (event.key === 'ArrowUp' && !upAnimationInProgress && !isEndOfGame) {
+  if ((event.key === 'ArrowUp' || event.key === 'w') && !upAnimationInProgress && !isEndOfGame) {
     // Start the animation
     startUpTime = performance.now();
     upAnimationInProgress = true; // Indicate that animation is in progress
@@ -774,7 +896,7 @@ window.addEventListener('keydown', function(event) {
   } else if (event.key === 'ArrowRight' && !rightAnimationInProgress && !isEndOfGame) {
     startRightTime = performance.now();
     rightAnimationInProgress = true;
-  } else if (event.key === 'ArrowDown' && !downAnimationInProgress && !isEndOfGame) {
+  } else if ((event.key === 'ArrowDown' || event.key === 's') && !downAnimationInProgress && !isEndOfGame) {
     startDownTime = performance.now();
     downAnimationInProgress = true;
   }
@@ -782,13 +904,13 @@ window.addEventListener('keydown', function(event) {
 
 // Listen for key up to reset the animation flag
 window.addEventListener('keyup', function(event) {
-  if (event.key === 'ArrowUp' && !isEndOfGame) {
+  if ((event.key === 'ArrowUp' || event.key === 'w') && !isEndOfGame) {
     upAnimationInProgress = false; // Reset only after key is released
   } else if (event.key === 'ArrowLeft' && !isEndOfGame) {
     leftAnimationInProgress = false;
   } else if (event.key === 'ArrowRight' && !isEndOfGame) {
     rightAnimationInProgress = false;
-  } else if (event.key === 'ArrowDown' && !isEndOfGame) {
+  } else if ((event.key === 'ArrowDown' || event.key === 's') && !isEndOfGame) {
     downAnimationInProgress = false;
   }
 });
@@ -842,6 +964,38 @@ function animateForward(time) {
 }
 requestAnimationFrame(animateForward);
 
+function animateTop(time) {
+  requestAnimationFrame(animateTop);
+  
+  // Time delta in seconds
+  let deltaTime = time * 0.001;  // Convert from milliseconds to seconds
+
+  // Handle continuous movement based on key states
+  if (keyStates['w'] && !isEndOfGame) {
+
+    const speed = 0.5;
+
+    const top = new THREE.Vector3(0, 1, 0); // Faces negative x-direction initially
+    // top.applyEuler(new THREE.Euler(0, engineGroup.rotation.y, 0, 'XYZ'));
+    if (engineGroup.position.y < 50) {
+      engineGroup.position.add(top.multiplyScalar(speed));
+    }
+    // engineGroup.position.add(top.multiplyScalar(speed));
+  }
+  if (keyStates['s'] && !isEndOfGame) {
+    const speed = 0.5;
+
+    const down = new THREE.Vector3(0, -1, 0); // Faces negative x-direction initially
+    // down.applyEuler(new THREE.Euler(0, engineGroup.rotation.y, 0, 'XYZ'));
+    if (engineGroup.position.y > -50) {
+      engineGroup.position.add(down.multiplyScalar(speed));
+    }
+    // engineGroup.position.add(down.multiplyScalar(speed));
+  }
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(animateTop);
+
 /**
  * Physics Objects
  */
@@ -892,6 +1046,9 @@ const arrowDown = document.getElementById('arrow-down');
 const arrowLeft = document.getElementById('arrow-left');
 const arrowRight = document.getElementById('arrow-right');
 
+const wKey = document.getElementById('w-key');
+const sKey = document.getElementById('s-key');
+
 // Function to handle arrow keys keydown event
 function handleKeyDown(event) {
   if (isEndOfGame) return
@@ -908,6 +1065,12 @@ function handleKeyDown(event) {
             break;
         case 'ArrowRight':
             arrowRight.classList.add('active');
+            break;
+        case 'w':
+            wKey.classList.add('active');
+            break;
+        case 's':
+            sKey.classList.add('active');
             break;
     }
 }
@@ -929,6 +1092,12 @@ function handleKeyUp(event) {
         case 'ArrowRight':
             arrowRight.classList.remove('active');
             break;
+        case 'w':
+            wKey.classList.remove('active');
+            break;
+        case 's':
+            sKey.classList.remove('active');
+            break;
     }
 }
 
@@ -943,111 +1112,31 @@ if (!isEndOfGame) {
  * Reset Button on Screen
  */
 // Event listener for esc keydown event
-/*
+
 document.addEventListener('keydown', function(event) {
   if (event.key === 'Escape') {
-      isEndOfGame = false
-      // console.log('objectsToUpdate :>> ', objectsToUpdate);
-      hasMovedToEdges = false
-
-      // targetMeshesArray = []
-      // targetMeshesAndBodies = []
-      // targetBodiesArray = []
-
-
-      targetMeshesArray.forEach(target => {
-        scene.remove(target)
-      })
-      // scene.remove(targets)
-      targetBodiesArray.forEach(body => {
-        world.remove(body)
-      })
-
-      targetMeshesArray = []
-      targetObjects = []
-      
-      // objectsToUpdate = []
-      targetMeshesArray = []
-      targetObjects = []
-      // let newObjectsToUpdate = objectsToUpdate.filter(object => object.mesh !== obstacle)
-      // console.log('newObjectsToUpdate :>> ', newObjectsToUpdate);
-      // objectsToUpdate = [...newObjectsToUpdate]
-
-
-      // objectsToUpdate.push({ mesh: engineGroup, body: engineBody })
-      // objectsToUpdate.push({ mesh: obstacle, body: obstacleBody })
-      // camera.lookAt(engineGroup.position)
-
-      const escapeKeyButton = document.getElementById('escape-key');
-      escapeKeyButton.classList.add('active');
-
-      world.gravity.set(0, 0, 0);
-
-      // Bring back the targets to their newly calculated initial positions
-      // targetBodiesArray.forEach(body => {
-      //   const angle = Math.random() * Math.PI * 2
-      //   const radius = 60 + Math.random() * 20
-      //   const x = Math.sin(angle) * radius
-      //   const z = Math.cos(angle) * radius
-    
-      //   body.position.set(x, 0, z)
-      //   body.velocity.set(0, 0, 0);
-      //   body.angularVelocity.set(0, 0, 0);
-        
-      //   // Set the rotation using a quaternion
-      //   const quat = new CANNON.Quaternion();
-      //   quat.setFromEuler(Math.PI, Math.PI, 0);
-      //   body.quaternion.copy(quat);
-      // });
-
-
-      // createTargets()
-      createTargetMeshes()
-      // console.log('targetMeshesArray :>> ', targetMeshesArray);
-      
-      targetMeshesArray.forEach(target => {
-        makeTargetBodies(target)
-      })
-      // console.log('targetMeshesAndBodies :>> ', targetMeshesAndBodies);
-      // targetObjects.forEach(target => {
-      //   objectsToUpdate.push({ mesh: target.mesh, body: target.body })
-      // })
-  
-      // Reset the button style after some time
-      setTimeout(() => {
-          escapeKeyButton.classList.remove('active');
-      }, 100);
-
-      cloneObjects.forEach(clone => {
-        scene.remove(clone.mesh)
-        world.remove(clone.body)
-      })
-      
-      cloneObjects = []
-      // allowCloning = true
-      // if (targetMeshesAndBodies.length < maxTargetsNumber) {
-      //   allowCloning = true
-      // }
+    // Reset the game
+    endSequence(true);
   }
 });
-*/
+
 
 /**
  * Screen Buttons
  */
 
 // ESCAPE KEY
-// function handleKeyPress(key) {
-//   // Create an artificial keydown event
-//   const event = new KeyboardEvent('keydown', { key: key });
-//   // Dispatch the event
-//   document.dispatchEvent(event);
-// }
+function handleKeyPress(key) {
+  // Create an artificial keydown event
+  const event = new KeyboardEvent('keydown', { key: key });
+  // Dispatch the event
+  document.dispatchEvent(event);
+}
 
 // Add event listeners for div clicks
-// document.getElementById('escape-key').addEventListener('click', () => {
-//   handleKeyPress('Escape');
-// });
+document.getElementById('escape-key').addEventListener('click', () => {
+  handleKeyPress('Escape');
+});
 
 // ARROW UP
 // Function to simulate keydown event
@@ -1245,99 +1334,208 @@ document.addEventListener('mouseleave', stopArrowDownKeyPress); // Stop if the m
 document.addEventListener('touchend', stopArrowDownKeyPress);
 document.addEventListener('touchcancel', stopArrowDownKeyPress); 
 
-// const endGameCheck = () => {
-//   if (isEndOfGame) {
-//     world.gravity.set(0, -20, 0);
-//   }
-// }
+// W KEY
+// Function to simulate keydown event
+function simulateWKeyDown() {
+  if (isEndOfGame) return
+  
+  const wKeyEvent = new KeyboardEvent('keydown', {
+      key: 'w',
+      code: 'KeyW',
+      keyCode: 87, // 87 is the keyCode for the 'w' key
+      which: 87,
+      bubbles: true,
+      cancelable: true
+  });
+  document.dispatchEvent(wKeyEvent);
+}
 
-const endSequence = () => {
-  loadingScreen.style.display = 'flex'
+// Function to simulate keyup event
+function simulateWKeyUp() {
+  if (isEndOfGame) return
+
+  const wKeyEvent = new KeyboardEvent('keyup', {
+      key: 'w',
+      code: 'KeyW',
+      keyCode: 87, // 87 is the keyCode for the 'w' key
+      which: 87,
+      bubbles: true,
+      cancelable: true
+  });
+  document.dispatchEvent(wKeyEvent);
+}
+
+// Function to start continuous key press simulation
+function startWKeyPress() {
+    simulateWKeyDown(); // Simulate an initial key press
+}
+
+// Function to stop continuous key press simulation
+function stopWKeyPress() {
+    simulateWKeyUp()
+}
+
+// Add event listeners for the w-key div
+const wKeyDiv = document.getElementById('w-key');
+wKeyDiv.addEventListener('mousedown', startWKeyPress);
+wKeyDiv.addEventListener('touchstart', startWKeyPress);
+
+// Add event listeners to the document to ensure we capture the mouseup event
+document.addEventListener('mouseup', stopWKeyPress);
+document.addEventListener('mouseleave', stopWKeyPress); // Stop if the mouse leaves the document
+document.addEventListener('touchend', stopWKeyPress);
+document.addEventListener('touchcancel', stopWKeyPress);
+
+// S KEY
+// Function to simulate keydown event
+function simulateSKeyDown() {
+  if (isEndOfGame) return
+  
+  const sKeyEvent = new KeyboardEvent('keydown', {
+      key: 's',
+      code: 'KeyS',
+      keyCode: 83, // 83 is the keyCode for the 's' key
+      which: 83,
+      bubbles: true,
+      cancelable: true
+  });
+  document.dispatchEvent(sKeyEvent);
+}
+
+// Function to simulate keyup event
+function simulateSKeyUp() {
+  if (isEndOfGame) return
+
+  const sKeyEvent = new KeyboardEvent('keyup', {
+      key: 's',
+      code: 'KeyS',
+      keyCode: 83, // 83 is the keyCode for the 's' key
+      which: 83,
+      bubbles: true,
+      cancelable: true
+  });
+  document.dispatchEvent(sKeyEvent);
+}
+
+// Function to start continuous key press simulation
+function startSKeyPress() {
+    simulateSKeyDown(); // Simulate an initial key press
+}
+
+// Function to stop continuous key press simulation
+function stopSKeyPress() {
+    simulateSKeyUp()
+}
+
+// Add event listeners for the s-key div
+const sKeyDiv = document.getElementById('s-key');
+sKeyDiv.addEventListener('mousedown', startSKeyPress);
+sKeyDiv.addEventListener('touchstart', startSKeyPress);
+
+// Add event listeners to the document to ensure we capture the mouseup event
+document.addEventListener('mouseup', stopSKeyPress);
+document.addEventListener('mouseleave', stopSKeyPress); // Stop if the mouse leaves the document
+document.addEventListener('touchend', stopSKeyPress);
+document.addEventListener('touchcancel', stopSKeyPress);
+
+
+// End of keys simulations
+
+let stopCallToEndGame = false
+
+const endSequence = (isReset) => {
+  let firstStageDuration = isReset ? 0 : 15000
+
+  stopCallToEndGame = true
+  world.gravity.set(0, -100, 0);
+  cloneObjects.forEach((clone) => {
+    clone.mesh.material.color = new THREE.Color('gold')
+    clone.mesh.scale.set(1, 1, 1)
+    for (let i = 0; i < numberOfCoins; i++) {
+      makeCoin(clone.mesh)
+    }
+  })
+
+  targetObjects.forEach((target) => {
+    target.mesh.material.color = new THREE.Color('gold')
+  });
+
   setTimeout(() => {
-    loadingScreen.style.display = 'none'
-  }, 1000)
-    // if (isEndOfGame) {
-      // world.gravity.set(-40, 0, 0);
+    // Put up loading screen and remove it after 3 seconds
 
-      // materialSphere.color = new THREE.Color('black')
+    // Stage Two
+    loadingScreen.style.display = 'flex'
+    
+    setTimeout(() => {
+      // Stage Three
+      loadingScreen.style.display = 'none'
+    }, 2000)
+  }, firstStageDuration)
 
-      // cloneObjects.forEach((clone) => {
-      //   clone.mesh.material.color = new THREE.Color('white')
-      //   clone.mesh.material.metalness = 1;
-      //   // clone.mesh.scale.set(0.8, 0.8, 0.8)
-      // })
+  setTimeout(() => {
+    isEndOfGame = true
+  }, firstStageDuration)
 
-      // targetObjects.forEach((target) => {
-      //   target.mesh.material.color = new THREE.Color('white')
-      //   target.mesh.material.metalness = 1;
-      //   // target.mesh.scale.set(0.8, 0.8, 0.8)
-      // })
+  // Stage Two
+  setTimeout(() => {
+    // remove clones
+    while (cloneObjects.length > 0) {
+      const clone = cloneObjects.pop()
+      scene.remove(clone.mesh)
+      world.remove(clone.body)
+    }
 
-      // world.gravity.set(0, -40, 0);
-      
+    while (coinObjects.length > 0) {
+      const coin = coinObjects.pop()
+      scene.remove(coin.mesh)
+      world.remove(coin.body)
+    }
 
-      // setTimeout(() => {
-        isEndOfGame = true
-        // world.gravity.set(0, 0, 0);
+    // reposition engine
+    engineObject.body.position.set(0, 0, 0)
+    engineObject.body.velocity.set(0, 0, 0);
+    engineObject.body.angularVelocity.set(0, 0, 0);
 
-        cloneObjects.forEach((clone) => {
-          clone.mesh.material.color = new THREE.Color('white')
-          clone.mesh.material.metalness = 1;
-        })
+    engineObject.mesh.position.set(0, 0, 0)
+    engineObject.mesh.rotation.set(0, 0, 0)
 
-        while (cloneObjects.length > 0) {
-          const clone = cloneObjects.pop()
-          scene.remove(clone.mesh)
-          world.remove(clone.body)
-        }
+    // reposition targets
+    for (let i = 0; i < numberOfTargets; i++) {
+      const target = targetObjects[i]
+      if (i === 0) {
+        target.body.position.set(separationDistance, 0, -separationDistance)
+      } else if (i === 1) {
+        target.body.position.set(separationDistance * 2, 0, 0)
+      } else if (i === 2) {
+        target.body.position.set(separationDistance, 0, separationDistance)
+      } else if (i === 3) {
+        target.body.position.set(separationDistance, 0, -(separationDistance + (separationDistance / 2)))
+      } else if (i === 4) {
+        target.body.position.set((separationDistance * 2) + (separationDistance / 2), 0, 0)
+      } else if (i === 5) {
+        target.body.position.set(separationDistance, 0, separationDistance + (separationDistance / 2))
+      }
 
-        engineObject.body.position.set(0, 0, 0)
-        engineObject.body.velocity.set(0, 0, 0);
-        engineObject.body.angularVelocity.set(0, 0, 0);
+      target.body.velocity.set(0, 0, 0);
+      target.body.angularVelocity.set(0, 0, 0);
+      target.body.quaternion.setFromEuler(0, 0, 0);
+    }
+  }, firstStageDuration);
 
-        engineObject.mesh.position.set(0, 0, 0)
-        engineObject.mesh.rotation.set(0, 0, 0)
-
-
-        // console.log('targetObjects :>> ', targetObjects);
-
-        for (let i = 0; i < numberOfTargets; i++) {
-          const target = targetObjects[i]
-          // console.log('target.mesh.position :>> ', target.mesh.position);
-          target.body.position.set((i + 1) * separationDistance, 0, 0)
-          target.body.velocity.set(0, 0, 0);
-          target.body.angularVelocity.set(0, 0, 0);
-        }
-
-
-        // targetObjects.forEach((target, index) => {
-        //   target.position.set((index + 1) * separationDistance, 0, 0)
-        //   target.body.velocity.set(0, 0, 0);
-        //   target.body.angularVelocity.set(0, 0, 0);
-
-        // })
-
-        // engineObject.body.position.set(-35, 0, 0)
-        // camera.position.set(-45, 0, 30)
-        // isEndOfGame = true
-      // }, 1000);
-
-      setTimeout(() => {
-        isEndOfGame = false
-        lastCollisionTime = 0
-        // targetMeshesArray = []
-        // targetObjects = []
-        cloneObjects = []
-        // makeTargetObjects()
-        tick()
-      }, 1000);
-
-      // setTimeout(() => {
-      //   isTornado = true
-      //   world.gravity.set(0, 0, 0);
-      // }, 60000);
-    // }
-  }
+  setTimeout(() => {
+    // Stage Three
+    targetObjects.forEach((target) => {
+      target.mesh.material.color = new THREE.Color('white')
+    });
+    stopCallToEndGame = false
+    isEndOfGame = false
+    lastCollisionTime = 0
+    cloneObjects = []
+    coinObjects = []
+    world.gravity.set(0, 0, 0);
+    tick()
+  }, firstStageDuration + 1000);
+}
 
 /**
  * Animate
@@ -1377,28 +1575,18 @@ const initialCameraMovement = () => {
   renderer.render(scene, camera)
 
   // Call tick again on the next frame
-  if (elapsedTime < 5) {
+  // console.log('elapsedTime :>> ', elapsedTime);
+  // console.log('introDuration :>> ', introDuration);
+  if (elapsedTime < introDuration) {
     window.requestAnimationFrame(initialCameraMovement)
   }
 }
-
-function updateGravity(elapsedTime, radius) {
-  const angle = elapsedTime % (2 * Math.PI); // Angle based on elapsed time
-  const x = radius * Math.cos(angle); // X coordinate on the circle
-  const z = radius * Math.sin(angle); // Z coordinate on the circle
-
-  // Set the new gravity direction
-  world.gravity.set(x, 0, z);
-}
-
 
 const sceneIsReady = scene.children.length = 9;
 
 if (sceneIsReady) {
   initialCameraMovement()
 }
-
-// let hasMovedToEdges = false; 
 
 const tick = () => {
   if (isEndOfGame) return
@@ -1429,28 +1617,17 @@ const tick = () => {
     clone.mesh.quaternion.copy(clone.body.quaternion)
   }
 
+  for (const coin of coinObjects) {
+    coin.mesh.position.copy(coin.body.position)
+    coin.mesh.quaternion.copy(coin.body.quaternion)
+  }
+
   if (cloneObjects.length < maxClonesNumber) {
     isEndOfGame = false
   }
-  // console.log('targetMeshesAndBodies.length :>> ', targetMeshesAndBodies.length);
-  if (cloneObjects.length >= maxClonesNumber) {
-    // console.log('cloneObjects.length :>> ', cloneObjects.length);
-    // isEndOfGame = true
-    endSequence()
 
-    // setTimeout(() => {
-      // lastCollisionTime = 0
-      // targetMeshesArray = []
-      // targetObjects = []
-      // cloneObjects = []
-    // }, 3000);
-    // setTimeout(() => {
-    //   // lastCollisionTime = 0
-    //   // targetMeshesArray = []
-    //   // targetObjects = []
-    //   // cloneObjects = []
-    //   endSequence()
-    // }, 1000);
+  if (cloneObjects.length >= maxClonesNumber && !isEndOfGame && !stopCallToEndGame) {
+    endSequence()
   } 
 
   // Update objects
@@ -1470,40 +1647,17 @@ const tick = () => {
 
   let newElapsedTime = elapsedTime - 5;
 
-  if (elapsedTime >= 5) {
+  if (elapsedTime >= introDuration) {
     camera.position.y = Math.sin(newElapsedTime * 0.1) * 20
   }
 
-  // if (isTornado) {
-  //   const radius = 140; // Example radius value, adjust as needed
-  //   updateGravity(elapsedTime, radius);
-
-  //   // const newElapsedTime = clock.getElapsedTime()
-  //   obstacleBody.position.x = 300
-  //   obstacleBody.position.z = 300
-  //   obstacleBody.position.y = 300
-
-  //   // for (const object of targetObjects) {
-  //   //   object.body.position.x = object.body.position.x * Math.cos(newElapsedTime * 2)
-  //   //   object.body.position.y = object.body.position.y
-  //   //   object.body.position.z = object.body.position.z * Math.sin(newElapsedTime * 2)
-  //   // }
-    
-  //   // // Clones mesh and body movement
-  //   // for (const clone of cloneObjects) {
-  //   //  clone.body.position.x = clone.body.position.x * Math.cos(newElapsedTime * 2)
-  //   //  clone.body.position.y = clone.body.position.y
-  //   //  clone.body.position.z = clone.body.position.z * Math.sin(newElapsedTime * 2)
-  //   // }
-  // }
-
-
-  // console.log('engineGroup.position :>> ', engineGroup.position);
-  // console.log('objectsToUpdate.length :>> ', objectsToUpdate.length);
   camera.lookAt(engineGroup.position)
 
   // Update controls
   controls.update()
+
+  // Update HTML element with the variable's value
+  document.getElementById('variable-display').innerText = `${cloneObjects.length}`;
 
   // Render
   renderer.render(scene, camera)
@@ -1511,7 +1665,6 @@ const tick = () => {
   // Call tick again on the next frame
   window.requestAnimationFrame(tick)
 }
-
 if (sceneIsReady) {
   tick()
 }

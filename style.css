@@ -23,107 +23,161 @@ canvas {
 }
 
 .arrowsTop {
-    position: absolute;
-    bottom: 85px;
-    right: 90px;
-    /* transform: translateX(-50%); */
-    display: flex;
-    gap: 10px;
+  position: absolute;
+  bottom: 85px;
+  right: 90px;
+  display: flex;
+  gap: 10px;
 }
 
 .arrowsBottom {
-    position: absolute;
-    bottom: 20px;
-    right: 30px;
-    /* transform: translateX(-50%); */
-    display: flex;
-    gap: 10px;
+  position: absolute;
+  bottom: 20px;
+  right: 30px;
+  display: flex;
+  gap: 10px;
+}
+
+.wKey {
+  position: absolute;
+  bottom: 85px;
+  right: 210px;
+  display: flex;
+}
+
+.sKey {
+  position: absolute;
+  bottom: 20px;
+  right: 210px;
+  display: flex;
 }
 
 .arrow {
-    /* Reset default button styles */
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    border: none;
-    margin: 0;
-    background: none;
-    padding: 0;
+  /* Reset default button styles */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  border: none;
+  margin: 0;
+  background: none;
+  padding: 0;
 
-    /* Styling */
-    width: 50px;
-    height: 50px;
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
-    border: 2px solid #000;
-    border-radius: 10px;
-    background-color: rgba(255, 255, 255, 0.3);
-    color: rgb(40, 40, 40);
-    font-size: 30px;
-    text-align: center;
-    cursor: pointer;
-    user-select: none; /* Prevent text selection */
-    -webkit-user-select: none; /* For Safari */
-    -moz-user-select: none; /* For Firefox */
-    -ms-user-select: none; /* For IE/Edge */
+  /* Styling */
+  width: 50px;
+  height: 50px;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  border: 2px solid #000;
+  border-radius: 10px;
+  background-color: rgba(255, 255, 255, 0.3);
+  color: rgb(40, 40, 40);
+  font-size: 30px;
+  text-align: center;
+  cursor: pointer;
+  user-select: none; /* Prevent text selection */
+  -webkit-user-select: none; /* For Safari */
+  -moz-user-select: none; /* For Firefox */
+  -ms-user-select: none; /* For IE/Edge */
 }
 
 .arrow.active {
-    background-color: rgba(255, 255, 255, 0.6);
+  background-color: rgba(255, 255, 255, 0.6);
 }
 
 .reset-container {
-    position: absolute;
-    bottom: 20px;
-    left: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.counter-container {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
 }
 
 .esc-key-button {
-    /* Reset default button styles */
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    border: none;
-    margin: 0;
-    background: none;
-    padding: 0;
+  /* Reset default button styles */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  border: none;
+  margin: 0;
+  background: none;
+  padding: 0;
 
-    /* Styling */
-    width: 50px;
-    height: 50px;
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
-    border: 2px solid #000;
-    border-radius: 10px;
-    background-color: rgba(255, 255, 255, 0.3);
-    color: rgb(40, 40, 40);
-    font-size: 18px;
-    font-weight: 700;
-    text-align: center;
-    cursor: pointer;
-    user-select: none; /* Prevent text selection */
-    -webkit-user-select: none; /* For Safari */
-    -moz-user-select: none; /* For Firefox */
-    -ms-user-select: none; /* For IE/Edge */
+  /* Styling */
+  width: 50px;
+  height: 50px;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  border: 2px solid #000;
+  border-radius: 10px;
+  background-color: rgba(255, 255, 255, 0.3);
+  color: rgb(40, 40, 40);
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+  user-select: none; /* Prevent text selection */
+  -webkit-user-select: none; /* For Safari */
+  -moz-user-select: none; /* For Firefox */
+  -ms-user-select: none; /* For IE/Edge */
 }
 
 .esc-key-button.active {
-    background-color: rgba(255, 255, 255, 0.6);
+  background-color: rgba(255, 255, 255, 0.6);
 }
 
 .reset-label {
-    font-size: 14px;
-    font-weight: 700;
-    color: rgba(255, 255, 255, 0.5);
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.count-display {
+  /* Reset default button styles */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  border: none;
+  margin: 0;
+  background: none;
+  padding: 0;
+
+  /* Styling */
+  width: 50px;
+  height: 50px;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  border: 2px solid #000;
+  border-radius: 10px;
+  background-color: rgba(255, 255, 255, 0.3);
+  color: rgb(40, 40, 40);
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+  user-select: none; /* Prevent text selection */
+  -webkit-user-select: none; /* For Safari */
+  -moz-user-select: none; /* For Firefox */
+  -ms-user-select: none; /* For IE/Edge */
 }
 
 .icon {
