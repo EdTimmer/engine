@@ -36,11 +36,6 @@ canvas {
   right: 30px;
   display: flex;
   gap: 10px;
-  position: absolute;
-  bottom: 20px;
-  right: 30px;
-  display: flex;
-  gap: 10px;
 }
 
 .wKey {
@@ -58,14 +53,6 @@ canvas {
 }
 
 .arrow {
-  /* Reset default button styles */
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  border: none;
-  margin: 0;
-  background: none;
-  padding: 0;
   /* Reset default button styles */
   appearance: none;
   -webkit-appearance: none;
@@ -97,7 +84,6 @@ canvas {
 
 .arrow.active {
   background-color: rgba(255, 255, 255, 0.6);
-  background-color: rgba(255, 255, 255, 0.6);
 }
 
 .reset-container {
@@ -120,36 +106,9 @@ canvas {
   align-items: center;
   justify-content: center;
   gap: 5px;
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-}
-
-.counter-container {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
 }
 
 .esc-key-button {
-  /* Reset default button styles */
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  border: none;
-  margin: 0;
-  background: none;
-  padding: 0;
   /* Reset default button styles */
   appearance: none;
   -webkit-appearance: none;
@@ -183,7 +142,6 @@ canvas {
 }
 
 .esc-key-button.active {
-  background-color: rgba(255, 255, 255, 0.6);
   background-color: rgba(255, 255, 255, 0.6);
 }
 
