@@ -3,6 +3,8 @@ import * as CANNON from 'cannon'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js'
 import GUI from 'lil-gui'
+import { int } from 'three/examples/jsm/nodes/Nodes.js'
+import { clone } from 'three/examples/jsm/utils/SkeletonUtils.js'
 
 // GUI
 // const gui = new GUI()
@@ -14,9 +16,18 @@ const canvas = document.querySelector('canvas.webgl')
 const loadingScreen = document.getElementById('loading-screen')
 setTimeout(() => {
   loadingScreen.style.display = 'none'
-}, 500)
+}, 1000)
 
 const scene = new THREE.Scene()
+
+const numberOfTargets = 6
+const numberOfCoins = 5
+const maxClonesNumber = 40
+const clonesOnHit = 3
+let isEndOfGame = false
+const separationDistance = 60
+// let isTornado = false
+
 
 // Objects
 const materialSphere = new THREE.MeshPhysicalMaterial({ color: '#ff4d00', emissive: 'black', roughness: 0, metalness: 0 })  // { color: '#B6BBC4', emissive: 'black', roughness: 0.5, metalness: 0.5}
@@ -137,9 +148,10 @@ const headSphere = new THREE.Mesh(new THREE.IcosahedronGeometry(1.7, 0), materia
 // headSpherePositionFolder.add(headSphere.position, 'y', -20, 20).name('Y-axis');
 
 /// Targets
-const targets = new THREE.Group()
 
-const targetMeshesArray = []
+let targetMeshesArray = []
+// let objectsToUpdate = []
+// let allowCloning = true
 
 function getRandomColor() {;
   const letters = '0123456789ABCDEF';
@@ -150,38 +162,84 @@ function getRandomColor() {;
   return color;
 }
 
+function getRandomGreyscaleColor() {
+  const value = Math.floor(Math.random() * 256);
+  const hexValue = value.toString(16).padStart(2, '0');
+  const color = `#${hexValue}${hexValue}${hexValue}`;
+  return color;
+}
+  
+function getRandomBlackOrWhite() {
+  const isWhite = Math.random() < 0.5;
+  return isWhite ? '#FFFFFF' : '#000000';
+}
+
+
+const targetTorusGeometry = new THREE.TorusGeometry(4, 2, 16, 100)
+const targetSphereGeometry = new THREE.SphereGeometry(4, 32, 32)
 const targetGeometry = new THREE.SphereGeometry(4, 32, 32)
-const numberOfTargets = 12
 
 const createTargetMeshes = () => {
+  // console.log('createTargetMeshes');
+  
   for(let i = 0; i < numberOfTargets; i++) {
 
     const targetMaterial = new THREE.MeshPhysicalMaterial({ emissive: 'black', roughness: 0, metalness: 0.2 })  // { color: '#B6BBC4', emissive: 'black', roughness: 0.5, metalness: 0.5}
     targetMaterial.transmission = 0
     targetMaterial.ior = 1.592
     targetMaterial.thickness = 0.2379
-    const targetColor = getRandomColor()
+    // const targetColor = getRandomColor()
+    const targetColor = 'white'
     targetMaterial.color = new THREE.Color(targetColor)
+    targetMaterial.metalness = 0.8
+    targetMaterial.roughness = 0
+    // targetMaterial.color = new THREE.Color(targetColor)
 
-    const angle = Math.random() * Math.PI * 2
-    const radius = 60 + Math.random() * 20
-    const x = Math.sin(angle) * radius
-    const z = Math.cos(angle) * radius
+    // const angle = Math.random() * Math.PI * 2
+    // const radius = 60 + Math.random() * 20
+    // const x = Math.sin(angle) * radius
+    // const z = Math.cos(angle) * radius
 
-    const target = new THREE.Mesh(targetGeometry, targetMaterial)
-    target.position.set(x, 0, z)
-    target.castShadow = true
-    target.scale.set(0.5, 1, 1)
+    const target = new THREE.Mesh(targetSphereGeometry, targetMaterial)
+    // target.position.set(x, 0, z)
+
+    // for (let i = 0; i < numberOfTargets; i++) {
+      // const target = targetObjects[i]
+      // console.log('target.mesh.position :>> ', target.mesh.position);
+    if (i === 0) {
+      target.position.set(separationDistance, 0, -separationDistance)
+    } else if (i === 1) {
+      target.position.set(separationDistance * 2, 0, 0)
+    } else if (i === 2) {
+      target.position.set(separationDistance, 0, separationDistance)
+    } else if (i === 3) {
+      target.position.set(separationDistance, 0, -(separationDistance + (separationDistance / 2)))
+    } else if (i === 4) {
+      target.position.set((separationDistance * 2) + (separationDistance / 2), 0, 0)
+    } else if (i === 5) {
+      target.position.set(separationDistance, 0, separationDistance + (separationDistance / 2))
+    }
+
+    // }
+
+    // target.position.set((i + 1) * separationDistance, 0, 0)
+    // target.castShadow = true
+    target.scale.set(1, 1, 1)
 
     targetMeshesArray.push(target)
+    scene.add(target)
 
-    targets.add(target)
+    // targets.add(target)
   }
 }
-createTargetMeshes()
 
 
-scene.add(targets)
+// const createTargets = () => {
+//   createTargetMeshes()
+//   scene.add(targets)
+// }
+
+// createTargetMeshes()
 
 // GROUPS
 
@@ -212,6 +270,7 @@ shellGroup.add(seal, molusk, headGroup);
 
 const engineGroup = new THREE.Group();
 engineGroup.add(coreGroup, shellGroup);
+engineGroup.position.set(0, 0, 0)
 
 scene.add(engineGroup);
 
@@ -240,8 +299,9 @@ world.defaultContactMaterial = defaultContactMaterial
 
 // Cannon.js Target Body
 
-const targetMeshesAndBodies = []
-const targetBodiesArray = []
+let targetObjects = []
+let targetBodiesArray = []
+let lastCollisionTime = 0
 
 const makeTargetBodies = (target) => {
   const targetShape = new CANNON.Sphere(target.geometry.parameters.radius)
@@ -257,37 +317,261 @@ const makeTargetBodies = (target) => {
   }
 
   targetBody.addEventListener('collide', event => {
-      var contact = event.contact;
+      const otherBody = event.body;
+      const contact = event.contact;
+      let normal = null;
+      let currentCollisionTime = null;
+
+      if (otherBody.id === engineBody.id) {
+
+        currentCollisionTime = new Date()
+        if (currentCollisionTime - lastCollisionTime < 100) {
+          return; // Exit if less than 1 second has passed
+        }
+        lastCollisionTime = currentCollisionTime;
+      }
+
+
+
       // Get the normal of the contact. Make sure it points away from the surface of the stationary body
       if (contact.bi.id === targetBody.id) { // bi is body interacting
-        var normal = contact.ni;
+        normal = contact.ni;
       } else {
-        var normal = contact.ni.scale(-1);
+        normal = contact.ni.scale(-1);
       }
 
       // Calculate impulse strength
-      var impulseStrength = normal.scale(10);
+      const impulseStrength = normal.scale(10);
 
       // Apply the impulse to the stationary body at the contact point
       applyImpulse(event.body, impulseStrength, contact.ri);
 
-      // Stop engine when it collides with target
-      // simulateArrowUpKeyUp()
-      // disableArrowUpKeyDown()
-
+      if (otherBody.id === engineBody.id && !isEndOfGame) { // && allowCloning
+        for (let i = 0; i < clonesOnHit; i++) {
+          if (cloneObjects.length < maxClonesNumber) {
+            makeClone(target, event.body, impulseStrength, contact.ri)
+          }
+          // makeClone(target, event.body, impulseStrength, contact.ri)
+          // clonesArray.push(clone)
+          // targetMeshesAndBodies.push(clone)
+          // objectsToUpdate.push(clone)
+        }
+      }
   });
 
 
   targetBody.position.copy(target.position)
-  targetMeshesAndBodies.push({ mesh: target, body: targetBody })
+  // targetMeshesArray.push({ mesh: target, body: targetBody })
+  targetObjects.push({ mesh: target, body: targetBody })
 
   world.addBody(targetBody)
 }
 
-targetMeshesArray.forEach(target => {
-  makeTargetBodies(target)
-})
+const makeTargetObjects = () => {
+  // console.log('makeTargetObjects');
+  createTargetMeshes();
 
+  targetMeshesArray.forEach(target => {
+    makeTargetBodies(target)
+  })
+}
+if (targetMeshesArray.length === 0 && !isEndOfGame) {
+  makeTargetObjects()
+}
+// MAKE CLONE TARGET
+let cloneObjects = []
+let coinObjects = []
+
+const makeClone = (target, eventBody, givenImpulseStrength, contactRi) => {
+  const getRandomNumber = (min, max) => {
+    return Math.random() * (max - min) + min;
+  }
+
+  function applyImpulse(body, impulse, contactPoint) {
+    body.applyImpulse(impulse, contactPoint);
+  }
+  const minNumber = -3;
+  const maxNumber = 3;
+  const clonePosition = {
+    x: target.position.x + getRandomNumber(minNumber, maxNumber),
+    y: target.position.y + getRandomNumber(minNumber, maxNumber),
+    z: target.position.z + getRandomNumber(minNumber, maxNumber),
+  }
+  const makeCloneMesh = () => {
+    const cloneMaterial = new THREE.MeshPhysicalMaterial({ emissive: 'black', roughness: 0, metalness: 0.2 })
+    cloneMaterial.transmission = 0
+    cloneMaterial.ior = 1.592
+    cloneMaterial.thickness = 0.2379
+    const cloneColor = getRandomColor()
+    cloneMaterial.color = new THREE.Color(cloneColor)
+
+    const clone = new THREE.Mesh(targetGeometry, cloneMaterial)
+    clone.position.set(clonePosition.x, clonePosition.y, clonePosition.z)
+    // clone.castShadow = true
+    clone.scale.set(0.5, 1, 1)
+
+    // clonesArray.push(clone)
+
+    scene.add(clone)
+
+    return clone
+  }
+
+  const cloneMesh = makeCloneMesh(target)
+
+  const makeCloneBody = (target) => {
+    const cloneShape = new CANNON.Sphere(target.geometry.parameters.radius)
+    const cloneBody = new CANNON.Body({
+        mass: 1,
+        position: new CANNON.Vec3(clonePosition.x, clonePosition.y, clonePosition.z),
+        shape: cloneShape,
+    })
+    
+    // targetBodiesArray.push(cloneBody)
+    world.addBody(cloneBody)
+
+    return cloneBody
+  }
+
+  const clonePhysicsBody = makeCloneBody(target)
+
+  clonePhysicsBody.addEventListener('collide', event => {
+    const otherBody = event.body;
+        const contact = event.contact;
+        let normal = null;
+
+        let currentCollisionTime = null;
+
+        if (otherBody.id === engineBody.id) {
+          currentCollisionTime = new Date()
+          if (currentCollisionTime - lastCollisionTime < 100) {
+            return; // Exit if less than 1 second has passed
+          }
+          lastCollisionTime = currentCollisionTime;
+        }
+
+        // Get the normal of the contact. Make sure it points away from the surface of the stationary body
+        if (contact.bi.id === clonePhysicsBody.id) { // bi is body interacting
+          normal = contact.ni;
+
+        } else {
+          normal = contact.ni.scale(-1);
+        }
+  
+        // Calculate impulse strength
+        const impulseStrength = normal.scale(10);
+  
+        // Apply the impulse to the stationary body at the contact point
+
+        applyImpulse(eventBody, givenImpulseStrength, contactRi);
+
+        // if (otherBody.id === engineBody.id && !isEndOfGame) { // && allowCloning
+        //   for (let i = 0; i < clonesOnHit; i++) {
+        //     makeClone(cloneMesh, event.body, impulseStrength, contact.ri)
+        //   }
+        // }
+    });
+  
+
+  const newClone = { mesh: cloneMesh, body: clonePhysicsBody }
+  cloneObjects.push(newClone)
+  // objectsToUpdate.push(newClone)
+  return newClone
+}
+
+const makeCoin = (clone) => {
+  const getRandomNumber = (min, max) => {
+    return Math.random() * (max - min) + min;
+  }
+
+  const minNumber = -3;
+  const maxNumber = 3;
+  const coinPosition = {
+    x: clone.position.x + getRandomNumber(minNumber, maxNumber),
+    y: clone.position.y + getRandomNumber(minNumber, maxNumber),
+    z: clone.position.z + getRandomNumber(minNumber, maxNumber),
+  }
+  const makeCoinMesh = () => {
+    const coinMaterial = new THREE.MeshPhysicalMaterial({ emissive: 'black', roughness: 0, metalness: 0.2 })
+    coinMaterial.transmission = 0
+    coinMaterial.ior = 1.592
+    coinMaterial.thickness = 0.2379
+    coinMaterial.metalness = 0.8
+    coinMaterial.color = new THREE.Color('gold')
+
+    const coin = new THREE.Mesh(targetGeometry, coinMaterial)
+    coin.position.set(coinPosition.x, coinPosition.y, coinPosition.z)
+    // coin.castShadow = true
+    coin.scale.set(1, 1, 1)
+
+    // coinsArray.push(coin)
+
+    scene.add(coin)
+
+    return coin
+  }
+
+  const coinMesh = makeCoinMesh(clone)
+
+  const makeCoinBody = (coin) => {
+    const coinShape = new CANNON.Sphere(coin.geometry.parameters.radius)
+    const coinBody = new CANNON.Body({
+        mass: 1,
+        position: new CANNON.Vec3(coinPosition.x, coinPosition.y, coinPosition.z),
+        shape: coinShape,
+    })
+    
+    // coinBodiesArray.push(coinBody)
+    world.addBody(coinBody)
+
+    return coinBody
+  }
+
+  const coinPhysicsBody = makeCoinBody(clone)
+
+  // coinPhysicsBody.addEventListener('collide', event => {
+  //   const otherBody = event.body;
+  //       const contact = event.contact;
+  //       let normal = null;
+
+  //       let currentCollisionTime = null;
+
+  //       if (otherBody.id === engineBody.id) {
+  //         currentCollisionTime = new Date()
+  //         if (currentCollisionTime - lastCollisionTime < 100) {
+  //           return; // Exit if less than 1 second has passed
+  //         }
+  //         lastCollisionTime = currentCollisionTime;
+  //       }
+
+  //       // Get the normal of the contact. Make sure it points away from the surface of the stationary body
+  //       if (contact.bi.id === coinPhysicsBody.id) { // bi is body interacting
+  //         normal = contact.ni;
+
+  //       } else {
+  //         normal = contact.ni.scale(-1);
+  //       }
+  
+  //       // Calculate impulse strength
+  //       const impulseStrength = normal.scale(10);
+  
+  //       // Apply the impulse to the stationary body at the contact point
+
+  //       applyImpulse(eventBody, givenImpulseStrength, contactRi);
+
+  //       // if (otherBody.id === engineBody.id && !isEndOfGame) { // && allowCloning
+  //       //   for (let i = 0; i < clonesOnHit; i++) {
+  //       //     makeClone(coinMesh, event.body, impulseStrength, contact.ri)
+  //       //   }
+  //       // }
+  //   });
+  
+
+  const newCoin = { mesh: coinMesh, body: coinPhysicsBody }
+  coinObjects.push(newCoin)
+  // objectsToUpdate.push(newCoin)
+  return newCoin
+}
 
 // Cannon.js Engine Body
 
@@ -308,7 +592,7 @@ const globalOpacity = 0;
 
 // Border Cylinder
 // Step 1: Create the Trimesh for the Inner Cylinder Boundary
-const innerRadius = 200; // Inner radius of the cylinder
+const innerRadius = 400; // Inner radius of the cylinder
 const height = 250; // Height of the cylinder
 
 // Function to create a Trimesh from a CylinderGeometry
@@ -399,8 +683,8 @@ scene.add(bottomPlaneMesh);
 
 // OBSTACLE
 
-const obstacleRadiusTop = 30;
-const obstacleRadiusBottom = 30;
+const obstacleRadiusTop = 20;
+const obstacleRadiusBottom = 20;
 const obstacleHeight = 100;
 const obstacleNumSegments = 32;
 
@@ -421,7 +705,7 @@ const obstacleBody = new CANNON.Body({
 
 // Rotate the cylinder body to align with the Three.js mesh
 const quat = new CANNON.Quaternion();
-// quat.setFromEuler(Math.PI / 2, 0, 0, 'XYZ'); // Rotate around the X-axis
+quat.setFromEuler(Math.PI / 2, 0, 0, 'XYZ'); // Rotate around the X-axis
 obstacleBody.quaternion.copy(quat);
 
 obstacleBody.position.copy(obstacle.position);
@@ -433,7 +717,7 @@ const lightAmbient = new THREE.AmbientLight( 0x404040 ); // soft white light
 scene.add( lightAmbient );
 
 const light = new THREE.PointLight(0xffffff, 100, 0);
-light.position.set(-5, 5, 5);
+light.position.set(30, 0, -10);
 scene.add(light);
 
 // Environment map
@@ -602,17 +886,17 @@ function updateRightRotation(time) {
 
 // Listen for the up arrow key
 window.addEventListener('keydown', function(event) {
-  if (event.key === 'ArrowUp' && !upAnimationInProgress) {
+  if ((event.key === 'ArrowUp' || event.key === 'w') && !upAnimationInProgress && !isEndOfGame) {
     // Start the animation
     startUpTime = performance.now();
     upAnimationInProgress = true; // Indicate that animation is in progress
-  } else if (event.key === 'ArrowLeft' && !leftAnimationInProgress) {
+  } else if (event.key === 'ArrowLeft' && !leftAnimationInProgress && !isEndOfGame) {
     startLeftTime = performance.now();
     leftAnimationInProgress = true;
-  } else if (event.key === 'ArrowRight' && !rightAnimationInProgress) {
+  } else if (event.key === 'ArrowRight' && !rightAnimationInProgress && !isEndOfGame) {
     startRightTime = performance.now();
     rightAnimationInProgress = true;
-  } else if (event.key === 'ArrowDown' && !downAnimationInProgress) {
+  } else if ((event.key === 'ArrowDown' || event.key === 's') && !downAnimationInProgress && !isEndOfGame) {
     startDownTime = performance.now();
     downAnimationInProgress = true;
   }
@@ -620,13 +904,13 @@ window.addEventListener('keydown', function(event) {
 
 // Listen for key up to reset the animation flag
 window.addEventListener('keyup', function(event) {
-  if (event.key === 'ArrowUp') {
+  if ((event.key === 'ArrowUp' || event.key === 'w') && !isEndOfGame) {
     upAnimationInProgress = false; // Reset only after key is released
-  } else if (event.key === 'ArrowLeft') {
+  } else if (event.key === 'ArrowLeft' && !isEndOfGame) {
     leftAnimationInProgress = false;
-  } else if (event.key === 'ArrowRight') {
+  } else if (event.key === 'ArrowRight' && !isEndOfGame) {
     rightAnimationInProgress = false;
-  } else if (event.key === 'ArrowDown') {
+  } else if ((event.key === 'ArrowDown' || event.key === 's') && !isEndOfGame) {
     downAnimationInProgress = false;
   }
 });
@@ -652,7 +936,7 @@ function animateForward(time) {
   let deltaTime = time * 0.001;  // Convert from milliseconds to seconds
 
   // Handle continuous movement based on key states
-  if (keyStates['ArrowUp']) {
+  if (keyStates['ArrowUp'] && !isEndOfGame) {
 
     const speed = 2;
 
@@ -661,7 +945,7 @@ function animateForward(time) {
 
     engineGroup.position.add(forward.multiplyScalar(-speed));
   }
-  if (keyStates['ArrowDown']) {
+  if (keyStates['ArrowDown'] && !isEndOfGame) {
     const speed = 2;
 
     const backward = new THREE.Vector3(-1, 0, 0); // Faces negative x-direction initially
@@ -669,10 +953,10 @@ function animateForward(time) {
 
     engineGroup.position.add(backward.multiplyScalar(speed));
   }
-  if (keyStates['ArrowLeft']) {
+  if (keyStates['ArrowLeft'] && !isEndOfGame) {
     engineGroup.rotation.y += 0.1;  
   }
-  if (keyStates['ArrowRight']) {
+  if (keyStates['ArrowRight'] && !isEndOfGame) {
     engineGroup.rotation.y -= 0.1;
   }
 
@@ -680,28 +964,75 @@ function animateForward(time) {
 }
 requestAnimationFrame(animateForward);
 
+function animateTop(time) {
+  requestAnimationFrame(animateTop);
+  
+  // Time delta in seconds
+  let deltaTime = time * 0.001;  // Convert from milliseconds to seconds
+
+  // Handle continuous movement based on key states
+  if (keyStates['w'] && !isEndOfGame) {
+
+    const speed = 0.5;
+
+    const top = new THREE.Vector3(0, 1, 0); // Faces negative x-direction initially
+    // top.applyEuler(new THREE.Euler(0, engineGroup.rotation.y, 0, 'XYZ'));
+    if (engineGroup.position.y < 50) {
+      engineGroup.position.add(top.multiplyScalar(speed));
+    }
+    // engineGroup.position.add(top.multiplyScalar(speed));
+  }
+  if (keyStates['s'] && !isEndOfGame) {
+    const speed = 0.5;
+
+    const down = new THREE.Vector3(0, -1, 0); // Faces negative x-direction initially
+    // down.applyEuler(new THREE.Euler(0, engineGroup.rotation.y, 0, 'XYZ'));
+    if (engineGroup.position.y > -50) {
+      engineGroup.position.add(down.multiplyScalar(speed));
+    }
+    // engineGroup.position.add(down.multiplyScalar(speed));
+  }
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(animateTop);
+
 /**
  * Physics Objects
  */
-const objectsToUpdate = []
+// objectsToUpdate.push({ mesh: engineGroup, body: engineBody })
+const engineObject = { mesh: engineGroup, body: engineBody }
 
-objectsToUpdate.push({ mesh: engineGroup, body: engineBody })
+// targetObjects.forEach(target => {
+//   objectsToUpdate.push({ mesh: target.mesh, body: target.body })
+// })
 
-targetMeshesAndBodies.forEach(target => {
-  objectsToUpdate.push({ mesh: target.mesh, body: target.body })
-})
+// cloneObjects.forEach(clone => {
+//   objectsToUpdate.push({ mesh: clone.mesh, body: clone.body })
+// })
 
-objectsToUpdate.push({ mesh: obstacle, body: obstacleBody })
+
+// objectsToUpdate.push({ mesh: obstacle, body: obstacleBody })
+const obstacleObject = { mesh: obstacle, body: obstacleBody }
 
 const maxAngularVelocity = 5
 world.addEventListener('postStep', function() {
-  targetBodiesArray.forEach(body => {
+  targetObjects.forEach(target => {
     // Calculate the magnitude of the angular velocity vector
-    const angularSpeed = body.angularVelocity.length();
+    const angularSpeed = target.body.angularVelocity.length();
     
     // If the angular speed exceeds the maximum, scale it down
     if (angularSpeed > maxAngularVelocity) {
-      body.angularVelocity.scale(maxAngularVelocity / angularSpeed, body.angularVelocity);
+      target.body.angularVelocity.scale(maxAngularVelocity / angularSpeed, target.body.angularVelocity);
+    }
+  });
+
+  cloneObjects.forEach(clone => {
+    // Calculate the magnitude of the angular velocity vector
+    const angularSpeed = clone.body.angularVelocity.length();
+    
+    // If the angular speed exceeds the maximum, scale it down
+    if (angularSpeed > maxAngularVelocity) {
+      clone.body.angularVelocity.scale(maxAngularVelocity / angularSpeed, clone.body.angularVelocity);
     }
   });
 });
@@ -715,8 +1046,13 @@ const arrowDown = document.getElementById('arrow-down');
 const arrowLeft = document.getElementById('arrow-left');
 const arrowRight = document.getElementById('arrow-right');
 
+const wKey = document.getElementById('w-key');
+const sKey = document.getElementById('s-key');
+
 // Function to handle arrow keys keydown event
 function handleKeyDown(event) {
+  if (isEndOfGame) return
+
     switch (event.key) {
         case 'ArrowUp':
             arrowUp.classList.add('active');
@@ -730,11 +1066,19 @@ function handleKeyDown(event) {
         case 'ArrowRight':
             arrowRight.classList.add('active');
             break;
+        case 'w':
+            wKey.classList.add('active');
+            break;
+        case 's':
+            sKey.classList.add('active');
+            break;
     }
 }
 
 // Function to handle arrow keys keyup event
 function handleKeyUp(event) {
+  if (isEndOfGame) return
+
     switch (event.key) {
         case 'ArrowUp':
             arrowUp.classList.remove('active');
@@ -748,45 +1092,34 @@ function handleKeyUp(event) {
         case 'ArrowRight':
             arrowRight.classList.remove('active');
             break;
+        case 'w':
+            wKey.classList.remove('active');
+            break;
+        case 's':
+            sKey.classList.remove('active');
+            break;
     }
 }
 
 // Add event listeners for keydown and keyup events
-window.addEventListener('keydown', handleKeyDown);
-window.addEventListener('keyup', handleKeyUp);
+if (!isEndOfGame) {
+  window.addEventListener('keydown', handleKeyDown);
+  window.addEventListener('keyup', handleKeyUp);
+}
+
 
 /**
  * Reset Button on Screen
  */
 // Event listener for esc keydown event
+
 document.addEventListener('keydown', function(event) {
   if (event.key === 'Escape') {
-      const escapeKeyButton = document.getElementById('escape-key');
-      escapeKeyButton.classList.add('active');
-
-      // Bring back the targets to their newly calculated initial positions
-      targetBodiesArray.forEach(body => {
-        const angle = Math.random() * Math.PI * 2
-        const radius = 60 + Math.random() * 20
-        const x = Math.sin(angle) * radius
-        const z = Math.cos(angle) * radius
-    
-        body.position.set(x, 0, z)
-        body.velocity.set(0, 0, 0);
-        body.angularVelocity.set(0, 0, 0);
-        
-        // Set the rotation using a quaternion
-        const quat = new CANNON.Quaternion();
-        quat.setFromEuler(Math.PI, Math.PI, 0);
-        body.quaternion.copy(quat);
-      });
-
-      // Reset the button style after some time
-      setTimeout(() => {
-          escapeKeyButton.classList.remove('active');
-      }, 100);
+    // Reset the game
+    endSequence(true);
   }
 });
+
 
 /**
  * Screen Buttons
@@ -808,19 +1141,23 @@ document.getElementById('escape-key').addEventListener('click', () => {
 // ARROW UP
 // Function to simulate keydown event
 function simulateArrowUpKeyDown() {
-    const arrowUpEvent = new KeyboardEvent('keydown', {
-        key: 'ArrowUp',
-        code: 'ArrowUp',
-        keyCode: 38, // 38 is the keyCode for the ArrowUp key
-        which: 38,
-        bubbles: true,
-        cancelable: true
-    });
-    document.dispatchEvent(arrowUpEvent);
+  if (isEndOfGame) return
+  
+  const arrowUpEvent = new KeyboardEvent('keydown', {
+      key: 'ArrowUp',
+      code: 'ArrowUp',
+      keyCode: 38, // 38 is the keyCode for the ArrowUp key
+      which: 38,
+      bubbles: true,
+      cancelable: true
+  });
+  document.dispatchEvent(arrowUpEvent);
 }
 
 // Function to simulate keyup event
 function simulateArrowUpKeyUp() {
+  if (isEndOfGame) return
+
   const arrowUpEvent = new KeyboardEvent('keyup', {
       key: 'ArrowUp',
       code: 'ArrowUp',
@@ -997,6 +1334,209 @@ document.addEventListener('mouseleave', stopArrowDownKeyPress); // Stop if the m
 document.addEventListener('touchend', stopArrowDownKeyPress);
 document.addEventListener('touchcancel', stopArrowDownKeyPress); 
 
+// W KEY
+// Function to simulate keydown event
+function simulateWKeyDown() {
+  if (isEndOfGame) return
+  
+  const wKeyEvent = new KeyboardEvent('keydown', {
+      key: 'w',
+      code: 'KeyW',
+      keyCode: 87, // 87 is the keyCode for the 'w' key
+      which: 87,
+      bubbles: true,
+      cancelable: true
+  });
+  document.dispatchEvent(wKeyEvent);
+}
+
+// Function to simulate keyup event
+function simulateWKeyUp() {
+  if (isEndOfGame) return
+
+  const wKeyEvent = new KeyboardEvent('keyup', {
+      key: 'w',
+      code: 'KeyW',
+      keyCode: 87, // 87 is the keyCode for the 'w' key
+      which: 87,
+      bubbles: true,
+      cancelable: true
+  });
+  document.dispatchEvent(wKeyEvent);
+}
+
+// Function to start continuous key press simulation
+function startWKeyPress() {
+    simulateWKeyDown(); // Simulate an initial key press
+}
+
+// Function to stop continuous key press simulation
+function stopWKeyPress() {
+    simulateWKeyUp()
+}
+
+// Add event listeners for the w-key div
+const wKeyDiv = document.getElementById('w-key');
+wKeyDiv.addEventListener('mousedown', startWKeyPress);
+wKeyDiv.addEventListener('touchstart', startWKeyPress);
+
+// Add event listeners to the document to ensure we capture the mouseup event
+document.addEventListener('mouseup', stopWKeyPress);
+document.addEventListener('mouseleave', stopWKeyPress); // Stop if the mouse leaves the document
+document.addEventListener('touchend', stopWKeyPress);
+document.addEventListener('touchcancel', stopWKeyPress);
+
+// S KEY
+// Function to simulate keydown event
+function simulateSKeyDown() {
+  if (isEndOfGame) return
+  
+  const sKeyEvent = new KeyboardEvent('keydown', {
+      key: 's',
+      code: 'KeyS',
+      keyCode: 83, // 83 is the keyCode for the 's' key
+      which: 83,
+      bubbles: true,
+      cancelable: true
+  });
+  document.dispatchEvent(sKeyEvent);
+}
+
+// Function to simulate keyup event
+function simulateSKeyUp() {
+  if (isEndOfGame) return
+
+  const sKeyEvent = new KeyboardEvent('keyup', {
+      key: 's',
+      code: 'KeyS',
+      keyCode: 83, // 83 is the keyCode for the 's' key
+      which: 83,
+      bubbles: true,
+      cancelable: true
+  });
+  document.dispatchEvent(sKeyEvent);
+}
+
+// Function to start continuous key press simulation
+function startSKeyPress() {
+    simulateSKeyDown(); // Simulate an initial key press
+}
+
+// Function to stop continuous key press simulation
+function stopSKeyPress() {
+    simulateSKeyUp()
+}
+
+// Add event listeners for the s-key div
+const sKeyDiv = document.getElementById('s-key');
+sKeyDiv.addEventListener('mousedown', startSKeyPress);
+sKeyDiv.addEventListener('touchstart', startSKeyPress);
+
+// Add event listeners to the document to ensure we capture the mouseup event
+document.addEventListener('mouseup', stopSKeyPress);
+document.addEventListener('mouseleave', stopSKeyPress); // Stop if the mouse leaves the document
+document.addEventListener('touchend', stopSKeyPress);
+document.addEventListener('touchcancel', stopSKeyPress);
+
+
+// End of keys simulations
+
+let stopCallToEndGame = false
+
+const endSequence = (isReset) => {
+  let firstStageDuration = isReset ? 0 : 15000
+
+  stopCallToEndGame = true
+  world.gravity.set(0, -100, 0);
+  cloneObjects.forEach((clone) => {
+    clone.mesh.material.color = new THREE.Color('gold')
+    clone.mesh.scale.set(1, 1, 1)
+    for (let i = 0; i < numberOfCoins; i++) {
+      makeCoin(clone.mesh)
+    }
+  })
+
+  targetObjects.forEach((target) => {
+    target.mesh.material.color = new THREE.Color('gold')
+  });
+
+  setTimeout(() => {
+    // Put up loading screen and remove it after 3 seconds
+
+    // Stage Two
+    loadingScreen.style.display = 'flex'
+    
+    setTimeout(() => {
+      // Stage Three
+      loadingScreen.style.display = 'none'
+    }, 2000)
+  }, firstStageDuration)
+
+  setTimeout(() => {
+    isEndOfGame = true
+  }, firstStageDuration)
+
+  // Stage Two
+  setTimeout(() => {
+    // remove clones
+    while (cloneObjects.length > 0) {
+      const clone = cloneObjects.pop()
+      scene.remove(clone.mesh)
+      world.remove(clone.body)
+    }
+
+    while (coinObjects.length > 0) {
+      const coin = coinObjects.pop()
+      scene.remove(coin.mesh)
+      world.remove(coin.body)
+    }
+
+    // reposition engine
+    engineObject.body.position.set(0, 0, 0)
+    engineObject.body.velocity.set(0, 0, 0);
+    engineObject.body.angularVelocity.set(0, 0, 0);
+
+    engineObject.mesh.position.set(0, 0, 0)
+    engineObject.mesh.rotation.set(0, 0, 0)
+
+    // reposition targets
+    for (let i = 0; i < numberOfTargets; i++) {
+      const target = targetObjects[i]
+      if (i === 0) {
+        target.body.position.set(separationDistance, 0, -separationDistance)
+      } else if (i === 1) {
+        target.body.position.set(separationDistance * 2, 0, 0)
+      } else if (i === 2) {
+        target.body.position.set(separationDistance, 0, separationDistance)
+      } else if (i === 3) {
+        target.body.position.set(separationDistance, 0, -(separationDistance + (separationDistance / 2)))
+      } else if (i === 4) {
+        target.body.position.set((separationDistance * 2) + (separationDistance / 2), 0, 0)
+      } else if (i === 5) {
+        target.body.position.set(separationDistance, 0, separationDistance + (separationDistance / 2))
+      }
+
+      target.body.velocity.set(0, 0, 0);
+      target.body.angularVelocity.set(0, 0, 0);
+      target.body.quaternion.setFromEuler(0, 0, 0);
+    }
+  }, firstStageDuration);
+
+  setTimeout(() => {
+    // Stage Three
+    targetObjects.forEach((target) => {
+      target.mesh.material.color = new THREE.Color('white')
+    });
+    stopCallToEndGame = false
+    isEndOfGame = false
+    lastCollisionTime = 0
+    cloneObjects = []
+    coinObjects = []
+    world.gravity.set(0, 0, 0);
+    tick()
+  }, firstStageDuration + 1000);
+}
+
 /**
  * Animate
  */
@@ -1004,13 +1544,13 @@ const clock = new THREE.Clock()
 let oldElapsedTime = 0
 
 // Variables for circular motion of the obstacle
-const obstacleRotationRadius = 190;
+const obstacleRotationRadius = innerRadius - 20;
 
 // INTRO CAMERA MOVEMENT
 
 // Define the starting and target positions
 const startPosition = new THREE.Vector3(0, -200, 0);
-const targetPosition = new THREE.Vector3(0, 0, 60);
+const targetPosition = new THREE.Vector3(-30, 0, -60);
 camera.position.copy(startPosition);
 
 // Define the duration of the movement in seconds
@@ -1029,12 +1569,15 @@ const initialCameraMovement = () => {
 
   // Update controls
   controls.update()
+  // camera.lookAt(engineGroup.position)
 
-  // Render
+    // Render
   renderer.render(scene, camera)
 
   // Call tick again on the next frame
-  if (elapsedTime < 5) {
+  // console.log('elapsedTime :>> ', elapsedTime);
+  // console.log('introDuration :>> ', introDuration);
+  if (elapsedTime < introDuration) {
     window.requestAnimationFrame(initialCameraMovement)
   }
 }
@@ -1046,21 +1589,46 @@ if (sceneIsReady) {
 }
 
 const tick = () => {
+  if (isEndOfGame) return
+
   const elapsedTime = clock.getElapsedTime()
   const deltaTime = elapsedTime - oldElapsedTime
   oldElapsedTime = elapsedTime
 
   world.step(1 / 60, deltaTime, 3)
 
-  for (const object of objectsToUpdate) {
-    if (object.mesh === engineGroup) {
-      object.body.position.copy(object.mesh.position)
-      object.body.quaternion.copy(object.mesh.quaternion)
-    } else {
-      object.mesh.position.copy(object.body.position)
-      object.mesh.quaternion.copy(object.body.quaternion)
-    }
-}
+  // Engine mesh and body movement
+  engineObject.body.position.copy(engineObject.mesh.position)
+  engineObject.body.quaternion.copy(engineObject.mesh.quaternion)
+
+  // Obstacle mesh and body movement
+  obstacleObject.mesh.position.copy(obstacleObject.body.position)
+  obstacleObject.mesh.quaternion.copy(obstacleObject.body.quaternion)
+
+  // Target mesh and body movement
+  for (const object of targetObjects) {
+    object.mesh.position.copy(object.body.position)
+    object.mesh.quaternion.copy(object.body.quaternion)
+  }
+  
+  // Clones mesh and body movement
+  for (const clone of cloneObjects) {
+    clone.mesh.position.copy(clone.body.position)
+    clone.mesh.quaternion.copy(clone.body.quaternion)
+  }
+
+  for (const coin of coinObjects) {
+    coin.mesh.position.copy(coin.body.position)
+    coin.mesh.quaternion.copy(coin.body.quaternion)
+  }
+
+  if (cloneObjects.length < maxClonesNumber) {
+    isEndOfGame = false
+  }
+
+  if (cloneObjects.length >= maxClonesNumber && !isEndOfGame && !stopCallToEndGame) {
+    endSequence()
+  } 
 
   // Update objects
   torusOne.rotation.y = elapsedTime * 2
@@ -1079,14 +1647,17 @@ const tick = () => {
 
   let newElapsedTime = elapsedTime - 5;
 
-  if (elapsedTime >= 5) {
+  if (elapsedTime >= introDuration) {
     camera.position.y = Math.sin(newElapsedTime * 0.1) * 20
   }
+
+  camera.lookAt(engineGroup.position)
 
   // Update controls
   controls.update()
 
-  camera.lookAt(engineGroup.position)
+  // Update HTML element with the variable's value
+  document.getElementById('variable-display').innerText = `${cloneObjects.length}`;
 
   // Render
   renderer.render(scene, camera)
@@ -1094,7 +1665,6 @@ const tick = () => {
   // Call tick again on the next frame
   window.requestAnimationFrame(tick)
 }
-
 if (sceneIsReady) {
   tick()
 }
