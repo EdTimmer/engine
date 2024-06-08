@@ -24,7 +24,7 @@ canvas {
 
 .arrowsTop {
   position: absolute;
-  bottom: 85px;
+  bottom: 80px;
   right: 90px;
   display: flex;
   gap: 10px;
@@ -40,7 +40,7 @@ canvas {
 
 .wKey {
   position: absolute;
-  bottom: 85px;
+  bottom: 80px;
   right: 210px;
   display: flex;
 }
@@ -69,7 +69,7 @@ canvas {
   flex-direction: row;
   justify-content: center;
   align-items: center;
-  border: 2px solid #000;
+  border: none;
   border-radius: 10px;
   background-color: rgba(255, 255, 255, 0.3);
   color: rgb(40, 40, 40);
@@ -119,18 +119,20 @@ canvas {
   padding: 0;
 
   /* Styling */
+  font-family: "Press Start 2P", system-ui;
+  font-weight: 400;
+  font-style: normal;
   width: 50px;
   height: 50px;
   display: flex;
   flex-direction: row;
   justify-content: center;
   align-items: center;
-  border: 2px solid #000;
+  border: none;
   border-radius: 10px;
   background-color: rgba(255, 255, 255, 0.3);
   color: rgb(40, 40, 40);
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 12px;
   text-align: center;
   cursor: pointer;
   user-select: none; /* Prevent text selection */
@@ -143,10 +145,41 @@ canvas {
   background-color: rgba(255, 255, 255, 0.6);
 }
 
-.reset-label {
-  font-size: 14px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.5);
+.letter-button {
+  /* Reset default button styles */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  border: none;
+  margin: 0;
+  background: none;
+  padding: 0;
+
+  /* Styling */
+  font-family: "Press Start 2P", system-ui;
+  font-weight: 400;
+  font-style: normal;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  border: none;
+  border-radius: 10px;
+  background-color: rgba(255, 255, 255, 0.3);
+  color: rgb(40, 40, 40);
+  font-size: 16px;
+  text-align: center;
+  cursor: pointer;
+  user-select: none; /* Prevent text selection */
+  -webkit-user-select: none; /* For Safari */
+  -moz-user-select: none; /* For Firefox */
+  -ms-user-select: none; /* For IE/Edge */
+}
+
+.letter-button.active {
+  background-color: rgba(255, 255, 255, 0.6);
 }
 
 .count-display {
@@ -160,20 +193,22 @@ canvas {
   padding: 0;
 
   /* Styling */
+  font-family: "Press Start 2P", system-ui;
+  font-weight: 400;
+  font-style: normal;
   width: 50px;
   height: 50px;
   display: flex;
   flex-direction: row;
   justify-content: center;
   align-items: center;
-  border: 2px solid #000;
+  border: none;
   border-radius: 10px;
   background-color: rgba(255, 255, 255, 0.3);
   color: rgb(40, 40, 40);
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 16px;
   text-align: center;
-  cursor: pointer;
+  /* cursor: pointer; */
   user-select: none; /* Prevent text selection */
   -webkit-user-select: none; /* For Safari */
   -moz-user-select: none; /* For Firefox */
