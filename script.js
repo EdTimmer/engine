@@ -366,11 +366,11 @@ const makeTargetBodies = (target) => {
         // if (!targetHitSound.isPlaying) {
           // targetHitSound.play();
         // }
-        // const targetHitSound = new THREE.Audio(listener)
-        // targetHitSound.setBuffer(targetSoundBuffer)
-        // targetHitSound.setLoop(false)
-        // targetHitSound.setVolume(0.5)
-        // targetHitSound.play();
+        const targetHitSound = new THREE.Audio(listener)
+        targetHitSound.setBuffer(targetSoundBuffer)
+        targetHitSound.setLoop(false)
+        targetHitSound.setVolume(0.5)
+        targetHitSound.play();
 
         currentCollisionTime = new Date()
         if (currentCollisionTime - lastCollisionTime < 100) {
