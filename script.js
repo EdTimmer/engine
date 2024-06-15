@@ -12,6 +12,46 @@ import { clone } from 'three/examples/jsm/utils/SkeletonUtils.js'
 
 const canvas = document.querySelector('canvas.webgl')
 
+// Audio Listener
+const listener = new THREE.AudioListener()
+// const candyHitSound = new THREE.Audio(listener)
+const audioLoader = new THREE.AudioLoader()
+const audioContext = listener.context
+
+function resumeAudioContext() {
+  if (audioContext.state === 'suspended') {
+      audioContext.resume();
+  }
+}
+
+window.addEventListener('click', resumeAudioContext);
+window.addEventListener('touchstart', resumeAudioContext);
+
+let candySoundBuffer = null
+
+audioLoader.load('candy_hit.wav', function(buffer) {
+  candySoundBuffer = buffer
+  // candyHitSound.setBuffer(buffer)
+  // candyHitSound.setLoop(false)
+  // candyHitSound.setVolume(0.5)
+})
+
+// const targetHitSound = new THREE.Audio(listener)
+let targetSoundBuffer = null
+
+audioLoader.load('target_hit.wav', function(buffer) {
+  targetSoundBuffer = buffer
+  // targetHitSound.setBuffer(buffer)
+  // targetHitSound.setLoop(false)
+  // targetHitSound.setVolume(0.5)
+})
+const winSound = new THREE.Audio(listener)
+audioLoader.load('win.wav', function(buffer) {  
+  winSound.setBuffer(buffer)
+  winSound.setLoop(false)
+  winSound.setVolume(0.5)
+})
+
 // LOADING SCREEN FOR HALF A SECOND
 const loadingScreen = document.getElementById('loading-screen')
 setTimeout(() => {
@@ -323,6 +363,14 @@ const makeTargetBodies = (target) => {
       let currentCollisionTime = null;
 
       if (otherBody.id === engineBody.id) {
+        // if (!targetHitSound.isPlaying) {
+          // targetHitSound.play();
+        // }
+        // const targetHitSound = new THREE.Audio(listener)
+        // targetHitSound.setBuffer(targetSoundBuffer)
+        // targetHitSound.setLoop(false)
+        // targetHitSound.setVolume(0.5)
+        // targetHitSound.play();
 
         currentCollisionTime = new Date()
         if (currentCollisionTime - lastCollisionTime < 100) {
@@ -448,6 +496,14 @@ const makeClone = (target, eventBody, givenImpulseStrength, contactRi) => {
             return; // Exit if less than 1 second has passed
           }
           lastCollisionTime = currentCollisionTime;
+          // if (!candyHitSound.isPlaying) {
+            // candyHitSound.play();
+          // }
+          // const candyHitSound = new THREE.Audio(listener)
+          // candyHitSound.setBuffer(candySoundBuffer)
+          // candyHitSound.setLoop(false)
+          // candyHitSound.setVolume(0.5)
+          // candyHitSound.play();
         }
 
         // Get the normal of the contact. Make sure it points away from the surface of the stationary body
@@ -1445,6 +1501,18 @@ let stopCallToEndGame = false
 
 const endSequence = (isReset) => {
   let firstStageDuration = isReset ? 0 : 15000
+
+  // const winSound = new THREE.Audio(listener)
+  // audioLoader.load('win.wav', function(buffer) {
+  //   winSound.setBuffer(buffer)
+  //   winSound.setLoop(false)
+  //   winSound.setVolume(0.5)
+  // })
+
+  // window.addEventListener('click', resumeAudioContext);
+  // window.addEventListener('touchstart', resumeAudioContext);
+
+  winSound.play()
 
   stopCallToEndGame = true
   world.gravity.set(0, -100, 0);
